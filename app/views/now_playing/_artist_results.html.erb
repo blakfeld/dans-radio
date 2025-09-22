@@ -1,0 +1,108 @@
+<turbo-frame id="artist-results">
+  <% if search_query.present? %>
+    <div class="search-status">
+      <%= link_to "Clear search", now_playing_path, class: "clear-search-link", data: { turbo_frame: "artist-results" } %>
+      <span style="color: #868e96; margin-left: 1rem;">
+        Found <%= pluralize(artists.count, 'artist') %> matching "<%= search_query %>"
+      </span>
+    </div>
+  <% else %>
+    <div class="discovery-header">
+      <h3>🎸 Discover Artists</h3>
+      <p class="muted">
+        Showing <%= artists.count %> of <%= total_artists %> artists •
+        Click any artist to browse their music
+      </p>
+      <%= link_to now_playing_path, class: "refresh-artists-btn", data: { turbo_frame: "artist-results" }, title: "Shuffle artists" do %>
+        <span style="font-size: 1.2rem;">🔄</span> Shuffle
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if artists.any? %>
+    <div class="artists-grid">
+      <% artists.each do |artist| %>
+        <%= link_to artist_path(artist), class: "artist-row-link", data: { turbo_frame: "_top" } do %>
+          <div class="artist-row">
+            <!-- Artist Info Section -->
+            <div class="artist-main">
+              <!-- Artist Thumbnail -->
+              <div class="artist-thumbnail">
+                <% if artist.images && artist.images.any? && artist.images.first['url'] %>
+                  <%= image_tag artist.images.first['url'],
+                      alt: artist.name,
+                      loading: "lazy" %>
+                <% else %>
+                  <div class="artist-placeholder">
+                    <%= artist.name.first.upcase %>
+                  </div>
+                <% end %>
+              </div>
+
+              <!-- Artist Details -->
+              <div class="artist-info">
+                <span class="artist-name">
+                  <%= artist.name %>
+                  <% if artist.popularity && artist.popularity >= 70 %>
+                    <span class="hot-badge" title="Popular artist">🔥</span>
+                  <% elsif artist.popularity && artist.popularity >= 50 %>
+                    <span class="trending-badge" title="Trending">⭐</span>
+                  <% end %>
+                </span>
+                <div class="artist-meta">
+                  <%= pluralize(artist.albums.count, 'album') %>
+                  <% if artist.popularity && artist.popularity > 0 %>
+                    <span class="popularity-indicator">
+                      •
+                      <% (artist.popularity / 20).times do %>
+                        <span style="color: var(--accent-color);">★</span>
+                      <% end %>
+                      <% (5 - artist.popularity / 20).times do %>
+                        <span style="color: #dee2e6;">★</span>
+                      <% end %>
+                    </span>
+                  <% end %>
+                </div>
+                <% if artist.genres && artist.genres.any? %>
+                  <div class="artist-genres">
+                    <% artist.genres.first(3).each do |genre| %>
+                      <span class="genre-tag"><%= genre %></span>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Album Thumbnails Section (hidden on mobile) -->
+            <div class="album-thumbnails">
+              <% artist.albums.order(release_date: :desc).limit(4).each do |album| %>
+                <div class="album-thumb" title="<%= album.name %> (<%= album.release_date&.split('-')&.first %>)">
+                  <% if album.images && album.images.any? && album.images.first['url'] %>
+                    <%= image_tag album.images.first['url'],
+                        alt: album.name,
+                        loading: "lazy" %>
+                  <% else %>
+                    <div class="album-placeholder">
+                      <%= album.name.first.upcase %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="artists-empty">
+      <% if search_query.present? %>
+        <p>No artists found matching "<%= search_query %>"</p>
+        <p class="muted">Try a different search term</p>
+      <% else %>
+        <div class="empty-state-icon">🎤</div>
+        <p>No artists available yet</p>
+        <p class="muted">Check back soon or try searching!</p>
+      <% end %>
+    </div>
+  <% end %>
+</turbo-frame>

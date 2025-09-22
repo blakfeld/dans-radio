@@ -1,0 +1,338 @@
+<%= render 'shared/navigation', current_page: 'browse' %>
+
+<% if !@can_request %>
+  <div class="cooldown-notice">
+    <p>Please wait <span class="cooldown-timer" data-seconds="<%= @cooldown_remaining %>"><%= @cooldown_remaining %></span> seconds before making another request.</p>
+  </div>
+<% end %>
+
+<div class="card">
+  <h1>Browse Artists</h1>
+
+  <!-- Search Bar -->
+  <div class="search-container">
+    <%= form_with url: browse_path, method: :get, class: "pure-form", id: "artist-search-form", data: { turbo_frame: "artist-results" } do |f| %>
+      <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-3-4">
+          <%= text_field_tag :q, @search_query,
+              placeholder: "Search for artists...",
+              class: "pure-input-1 search-input",
+              id: "artist-search-input",
+              autocomplete: "off" %>
+        </div>
+        <div class="pure-u-1 pure-u-md-1-4">
+          <%= submit_tag "Search", class: "pure-button pure-button-primary", style: "width: 100%; display: none;" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Results will be loaded here via Turbo Frame -->
+  <%= render "artist_results", artists: @artists, search_query: @search_query %>
+</div>
+
+<style>
+  .search-container {
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+
+  .search-input {
+    padding: 0.8rem;
+    font-size: 1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    transition: border-color 0.3s;
+  }
+
+  .search-input:focus {
+    border-color: #ff6b6b;
+    outline: none;
+  }
+
+  .turbo-progress-bar {
+    background-color: #ff6b6b !important;
+  }
+
+  .clear-search-link {
+    color: #ff6b6b;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .clear-search-link:hover {
+    text-decoration: underline;
+  }
+
+  .artists-grid {
+    margin-top: 2rem;
+  }
+
+  .artist-row-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    margin-bottom: 1rem;
+  }
+
+  .artist-row-link:hover {
+    text-decoration: none;
+  }
+
+  .artist-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .artist-row-link:hover .artist-row {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    border-color: #ff6b6b;
+  }
+
+  .artist-main {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0; /* Allow text to truncate */
+  }
+
+  .artist-thumbnail {
+    width: 80px;
+    height: 80px;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  .artist-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+  }
+
+  .artist-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+  }
+
+  .artist-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .artist-name {
+    display: inline-block;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 0.25rem;
+    transition: color 0.2s;
+  }
+
+  .artist-row-link:hover .artist-name {
+    color: #ff6b6b;
+  }
+
+  .artist-meta {
+    color: #868e96;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .popularity-indicator {
+    display: inline-block;
+    margin-left: 0.5rem;
+  }
+
+  .artist-genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .genre-tag {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: #e3f2fd;
+    color: #2196f3;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .album-thumbnails {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+  }
+
+  .album-thumb {
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .album-thumb:hover {
+    transform: scale(1.1);
+  }
+
+  .album-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .album-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  /* Mobile Responsive */
+  @media screen and (max-width: 768px) {
+    .album-thumbnails {
+      display: none; /* Hide album thumbnails on mobile */
+    }
+
+    .artist-thumbnail {
+      width: 60px;
+      height: 60px;
+    }
+
+    .artist-name {
+      font-size: 1rem;
+    }
+
+    .artist-genres {
+      display: none; /* Hide genres on mobile for space */
+    }
+
+    .search-container {
+      padding: 1rem;
+    }
+
+    .artist-row {
+      padding: 0.75rem;
+    }
+
+    .search-input {
+      font-size: 16px; /* Prevent zoom on iOS */
+    }
+  }
+
+  /* Tablet */
+  @media screen and (min-width: 769px) and (max-width: 1024px) {
+    .album-thumbnails {
+      max-width: 200px;
+    }
+
+    .album-thumb {
+      width: 45px;
+      height: 45px;
+    }
+  }
+</style>
+
+<script>
+  // Cooldown timer
+  const timer = document.querySelector('.cooldown-timer');
+  if (timer) {
+    let seconds = parseInt(timer.dataset.seconds);
+    const interval = setInterval(function() {
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        location.reload();
+      } else {
+        timer.textContent = seconds;
+      }
+    }, 1000);
+  }
+
+  // Enhanced Search functionality with Turbo support
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('artist-search-input');
+    const searchForm = document.getElementById('artist-search-form');
+
+    if (!searchInput || !searchForm) return;
+
+    let debounceTimer;
+    let lastSearchValue = searchInput.value;
+
+    // Function to perform search
+    function performSearch() {
+      const currentValue = searchInput.value.trim();
+
+      // Only search if value has changed
+      if (currentValue === lastSearchValue) return;
+
+      lastSearchValue = currentValue;
+
+      // Submit the form (Turbo will handle it)
+      searchForm.requestSubmit();
+    }
+
+    // Handle typing with debounce
+    searchInput.addEventListener('input', function(e) {
+      clearTimeout(debounceTimer);
+
+      // If the input is empty, search immediately to clear results
+      if (this.value === '') {
+        performSearch();
+        return;
+      }
+
+      // Otherwise, debounce for 400ms
+      debounceTimer = setTimeout(performSearch, 400);
+    });
+
+    // Handle Enter key
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(debounceTimer);
+        performSearch();
+      }
+    });
+
+    // Focus on search input on page load if empty
+    if (!searchInput.value) {
+      searchInput.focus();
+    }
+
+    // No need for re-attachment as the entire row is now clickable
+    // Turbo frames handle navigation automatically
+  });
+
+  // The entire row is now clickable, no need for individual handlers
+</script>

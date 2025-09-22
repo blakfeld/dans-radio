@@ -1,0 +1,65 @@
+<%= render 'shared/navigation', current_page: 'queue' %>
+
+<div class="card">
+  <h1>Request Queue</h1>
+
+  <% if @currently_playing %>
+    <div class="queue-item playing">
+      <div class="queue-position">▶</div>
+      <div class="queue-item-info">
+        <strong>Now Playing:</strong><br>
+        <span class="item-title"><%= @currently_playing.track_title %></span><br>
+        <span class="item-subtitle"><%= @currently_playing.artist %></span>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @pending_requests.any? %>
+    <h3 style="margin-top: 2rem;">Up Next:</h3>
+    <% @pending_requests.each_with_index do |request, index| %>
+      <% next if request == @currently_playing %>
+      <div class="queue-item">
+        <div class="queue-position"><%= index + 1 %></div>
+        <div class="queue-item-info">
+          <span class="item-title"><%= request.track_title %></span><br>
+          <span class="item-subtitle">
+            <%= request.artist %>
+            <% if request.track && request.track.duration_ms %>
+              • <%= request.track.duration_formatted %>
+            <% end %>
+          </span>
+          <% if request.created_at %>
+            <br>
+            <span style="font-size: 0.8rem; color: var(--muted-color);">
+              Requested <%= time_ago_in_words(request.created_at) %> ago
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="empty-state" style="margin-top: 2rem;">
+      <div class="empty-state-icon">📭</div>
+      <p>No requests in the queue</p>
+      <p class="muted">Be the first to request a song!</p>
+      <%= link_to "Browse Music", browse_path, class: "pure-button pure-button-primary" %>
+    </div>
+  <% end %>
+</div>
+
+<div class="card" style="text-align: center;">
+  <p style="color: var(--muted-color);">
+    <strong>Queue Stats:</strong>
+    <%= pluralize(@pending_requests.count, 'song') %> in queue
+    <% if @pending_requests.any? %>
+      • Estimated wait: ~<%= (@pending_requests.count * 3) %> minutes
+    <% end %>
+  </p>
+</div>
+
+<script>
+  // Auto-refresh the page every 30 seconds
+  setTimeout(function() {
+    location.reload();
+  }, 30000);
+</script>

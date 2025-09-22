@@ -1,0 +1,88 @@
+<div class="admin-header">
+  <h1>Song Requests Management</h1>
+  <div style="float: right;">
+    <%= link_to "Clear Queue", clear_queue_admin_song_requests_path,
+        method: :delete,
+        data: { confirm: "Are you sure you want to clear all pending requests?" },
+        class: "pure-button",
+        style: "background: #ff6b6b; color: white;" %>
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+<div class="card" style="margin-bottom: 1rem;">
+  <form class="pure-form pure-form-stacked" method="get">
+    <fieldset>
+      <legend>Filter Requests</legend>
+      <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-1-3">
+          <label for="status">Status</label>
+          <%= select_tag :status,
+              options_for_select([
+                ['All', ''],
+                ['Pending', 'pending'],
+                ['Queued', 'queued'],
+                ['Playing', 'playing'],
+                ['Played', 'played'],
+                ['Failed', 'failed']
+              ], params[:status]),
+              class: "pure-input-1",
+              onchange: "this.form.submit();" %>
+        </div>
+      </div>
+    </fieldset>
+  </form>
+</div>
+
+<% if @song_requests.any? %>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Track</th>
+        <th>Artist</th>
+        <th>Position</th>
+        <th>Status</th>
+        <th>Requested</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @song_requests.each do |request| %>
+        <tr>
+          <td>#<%= request.id %></td>
+          <td><%= request.track_title %></td>
+          <td><%= request.artist %></td>
+          <td><%= request.position || '-' %></td>
+          <td>
+            <span class="status-badge status-<%= request.status %>">
+              <%= request.status.capitalize %>
+            </span>
+          </td>
+          <td><%= time_ago_in_words(request.created_at) %> ago</td>
+          <td>
+            <% if request.status == 'pending' %>
+              <%= link_to "Approve", approve_admin_song_request_path(request),
+                  method: :patch,
+                  class: "pure-button pure-button-sm",
+                  style: "background: #51cf66; color: white; font-size: 0.8rem;" %>
+              <%= link_to "Reject", reject_admin_song_request_path(request),
+                  method: :patch,
+                  class: "pure-button pure-button-sm",
+                  style: "background: #ff6b6b; color: white; font-size: 0.8rem;" %>
+            <% end %>
+            <%= link_to "Delete", admin_song_request_path(request),
+                method: :delete,
+                data: { confirm: "Are you sure?" },
+                class: "pure-button pure-button-sm",
+                style: "font-size: 0.8rem;" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <div class="empty-state">
+    <p>No song requests found.</p>
+  </div>
+<% end %>

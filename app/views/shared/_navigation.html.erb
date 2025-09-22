@@ -1,0 +1,23 @@
+<nav class="radio-header">
+  <h1 class="radio-title">
+    <%= link_to "dan's radio", root_path %>
+  </h1>
+</nav>
+
+<% if flash[:notice] %>
+  <div class="flash notice">
+    <%= flash[:notice] %>
+  </div>
+<% end %>
+
+<% if flash[:alert] %>
+  <div class="flash alert">
+    <%= flash[:alert] %>
+  </div>
+<% end %>
+
+<% if flash[:success] %>
+  <div class="flash success">
+    <%= flash[:success] %>
+  </div>
+<% end %>

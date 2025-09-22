@@ -1,0 +1,42 @@
+<div class="admin-header">
+  <h1>Albums Management</h1>
+</div>
+
+<% if @albums.any? %>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Artist</th>
+        <th>Type</th>
+        <th>Release Date</th>
+        <th>Total Tracks</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @albums.each do |album| %>
+        <tr>
+          <td>#<%= album.id %></td>
+          <td><%= album.name %></td>
+          <td><%= album.artist&.name || '-' %></td>
+          <td><%= album.album_type&.capitalize || '-' %></td>
+          <td><%= album.release_date || '-' %></td>
+          <td><%= album.total_tracks || '-' %></td>
+          <td>
+            <%= link_to "Delete", admin_album_path(album),
+                method: :delete,
+                data: { confirm: "Are you sure?" },
+                class: "pure-button pure-button-sm",
+                style: "font-size: 0.8rem;" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <div class="empty-state">
+    <p>No albums found.</p>
+  </div>
+<% end %>

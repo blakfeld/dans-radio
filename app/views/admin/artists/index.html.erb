@@ -1,0 +1,41 @@
+<div class="admin-header">
+  <h1>Artists Management</h1>
+</div>
+
+<% if @artists.any? %>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Albums</th>
+        <th>Popularity</th>
+        <th>Spotify ID</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @artists.each do |artist| %>
+        <tr>
+          <td>#<%= artist.id %></td>
+          <td><%= artist.name %></td>
+          <td><%= artist.albums.count %></td>
+          <td><%= artist.popularity || '-' %></td>
+          <td><%= artist.spotify_id&.truncate(20) || '-' %></td>
+          <td>
+            <%= link_to "View", artist_path(artist), target: "_blank", class: "pure-button pure-button-sm" %>
+            <%= link_to "Delete", admin_artist_path(artist),
+                method: :delete,
+                data: { confirm: "Are you sure?" },
+                class: "pure-button pure-button-sm",
+                style: "font-size: 0.8rem;" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <div class="empty-state">
+    <p>No artists found.</p>
+  </div>
+<% end %>

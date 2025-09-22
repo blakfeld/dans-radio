@@ -1,0 +1,340 @@
+<%= render 'shared/navigation', current_page: 'now_playing' %>
+
+<div class="pure-g">
+  <div class="pure-u-1">
+    <% if @currently_playing %>
+      <% track = @currently_playing[:track] || @currently_playing[:spotify_track] %>
+      <% if track %>
+        <%# Get album artwork %>
+        <% album_image = if track.respond_to?(:album) && track.album
+                          if track.album.respond_to?(:images) && track.album.images&.any?
+                            track.album.images.first["url"]
+                          elsif track.album.respond_to?(:image)
+                            track.album.image
+                          end
+                        end %>
+
+        <div class="now-playing-hero" data-bg-image="<%= album_image %>">
+          <div class="hero-backdrop"></div>
+          <div class="hero-content">
+            <div class="now-playing-widget">
+              <div class="widget-image">
+                <% if album_image %>
+                  <img src="<%= album_image %>" alt="Album artwork" />
+                <% else %>
+                  <div class="placeholder-image">
+                    <span class="placeholder-icon">🎵</span>
+                  </div>
+                <% end %>
+              </div>
+
+              <div class="widget-info">
+                <div class="status-indicator">
+                  <% if @currently_playing[:is_playing] %>
+                    <span class="playing-badge">
+                      <span class="pulse"></span>
+                      NOW PLAYING
+                    </span>
+                  <% else %>
+                    <span class="paused-badge">PAUSED</span>
+                  <% end %>
+                </div>
+
+                <h2 class="track-title">
+                  <%= track.respond_to?(:title) ? track.title : track.try(:name) %>
+                </h2>
+
+                <div class="track-artist">
+                  <% if track.respond_to?(:artist) %>
+                    <%= track.artist&.name %>
+                  <% elsif track.respond_to?(:artists) %>
+                    <%= track.artists&.map(&:name)&.join(", ") %>
+                  <% end %>
+                </div>
+
+                <div class="track-album">
+                  <% if track.respond_to?(:album) && track.album %>
+                    <%= track.album.respond_to?(:name) ? track.album.name : track.album %>
+                  <% end %>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="now-playing-hero empty">
+        <div class="hero-backdrop"></div>
+        <div class="hero-content">
+          <div class="empty-state">
+            <div class="empty-state-icon">🎵</div>
+            <h2>No track currently playing</h2>
+            <p class="muted">Music will start soon!</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% if @queue_count && @queue_count > 0 %>
+  <div class="queue-info-bar">
+    <span class="queue-count"><%= @queue_count %></span>
+    <%= "song".pluralize(@queue_count) %> in queue
+    <% if @queue_duration_mins %>
+      <span class="separator">•</span>
+      ~<%= @queue_duration_mins %> <%= "minute".pluralize(@queue_duration_mins) %>
+    <% end %>
+    <span class="separator">•</span>
+    <%= link_to "view queue", queue_path, class: "queue-link" %>
+  </div>
+<% end %>
+
+<% if !@can_request %>
+  <div class="cooldown-notice">
+    <p>Please wait <span class="cooldown-timer" data-seconds="<%= @cooldown_remaining %>"><%= @cooldown_remaining %></span> seconds before making another request.</p>
+  </div>
+<% end %>
+
+<div class="browse-section card">
+  <h2 class="content-subhead">Browse & Request Music</h2>
+
+  <!-- Search Bar with Turbo Frame -->
+  <div class="search-container">
+    <%= form_with url: now_playing_path, method: :get, class: "pure-form", id: "artist-search-form", data: { turbo_frame: "artist-results" } do |f| %>
+      <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-4-5">
+          <%= text_field_tag :q, @search_query,
+              placeholder: "Search for artists...",
+              class: "pure-input-1 search-input",
+              id: "artist-search-input",
+              autocomplete: "off" %>
+        </div>
+        <div class="pure-u-1 pure-u-md-1-5">
+          <%= submit_tag "Search", class: "pure-button pure-button-primary search-button", style: "display: none;" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Artist Results loaded via Turbo Frame -->
+  <%= render "artist_results",
+      artists: @artists,
+      search_query: @search_query,
+      total_artists: @total_artists,
+      discovery_mode: @discovery_mode %>
+</div>
+
+<script>
+  // Clear session when navigating away
+  window.addEventListener('beforeunload', function() {
+    // Mark that we're leaving the page
+    sessionStorage.setItem('leavingNowPlaying', 'true');
+  });
+
+  // Load background image smoothly to prevent flickering
+  document.addEventListener('DOMContentLoaded', function() {
+    // Check if this is the initial page load or navigation back
+    const leftPage = sessionStorage.getItem('leavingNowPlaying');
+    const isInitialLoad = !sessionStorage.getItem('nowPlayingLoaded') || leftPage === 'true';
+
+    if (isInitialLoad) {
+      sessionStorage.setItem('nowPlayingLoaded', 'true');
+      sessionStorage.removeItem('leavingNowPlaying');
+      // Add animation class for first load only
+      const widget = document.querySelector('.now-playing-widget');
+      if (widget) {
+        widget.classList.add('initial-load');
+      }
+    }
+
+    const hero = document.querySelector('.now-playing-hero[data-bg-image]');
+    if (hero) {
+      const imageUrl = hero.dataset.bgImage;
+      if (imageUrl) {
+        // Check if we've already loaded this image
+        const cachedImage = sessionStorage.getItem('currentAlbumImage');
+
+        if (cachedImage === imageUrl) {
+          // Same image, apply it immediately without animation
+          hero.style.backgroundImage = `url('${imageUrl}')`;
+          hero.classList.add('loaded');
+        } else {
+          // New image, preload and apply
+          const img = new Image();
+          img.onload = function() {
+            // Only add transition on initial load
+            if (isInitialLoad) {
+              hero.style.transition = 'opacity 0.3s ease-in-out';
+            }
+            hero.style.backgroundImage = `url('${imageUrl}')`;
+            hero.classList.add('loaded');
+            sessionStorage.setItem('currentAlbumImage', imageUrl);
+          };
+          img.src = imageUrl;
+        }
+      }
+    }
+  });
+
+  // Auto-refresh to keep the now playing info current (paused while searching)
+  let refreshTimer;
+  let isSearching = false;
+
+  function startRefreshTimer() {
+    if (!isSearching) {
+      refreshTimer = setTimeout(function() {
+        // Fetch updated content via AJAX instead of page reload
+        fetch(window.location.href, {
+          headers: {
+            'Accept': 'text/html',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(response => response.text())
+        .then(html => {
+          // Parse the response
+          const parser = new DOMParser();
+          const newDoc = parser.parseFromString(html, 'text/html');
+
+          // Update only the now playing widget content
+          const currentWidget = document.querySelector('.now-playing-widget');
+          const newWidget = newDoc.querySelector('.now-playing-widget');
+          if (currentWidget && newWidget) {
+            // Preserve the widget container, just update inner content
+            currentWidget.innerHTML = newWidget.innerHTML;
+          }
+
+          // Update queue info bar if needed
+          const currentQueueInfo = document.querySelector('.queue-info-bar');
+          const newQueueInfo = newDoc.querySelector('.queue-info-bar');
+          if (newQueueInfo) {
+            if (currentQueueInfo) {
+              currentQueueInfo.innerHTML = newQueueInfo.innerHTML;
+            } else {
+              // Queue info bar wasn't there before, add it
+              const heroSection = document.querySelector('.now-playing-hero');
+              if (heroSection && heroSection.parentElement) {
+                heroSection.parentElement.insertAdjacentHTML('afterend', newQueueInfo.outerHTML);
+              }
+            }
+          } else if (currentQueueInfo) {
+            // Queue is now empty, remove the bar
+            currentQueueInfo.remove();
+          }
+
+          // Update background image if track changed
+          const newHero = newDoc.querySelector('.now-playing-hero[data-bg-image]');
+          if (newHero) {
+            const newImageUrl = newHero.dataset.bgImage;
+            const currentImageUrl = sessionStorage.getItem('currentAlbumImage');
+
+            if (newImageUrl !== currentImageUrl) {
+              // Track changed, update background
+              const hero = document.querySelector('.now-playing-hero');
+              if (hero) {
+                hero.dataset.bgImage = newImageUrl;
+                const img = new Image();
+                img.onload = function() {
+                  hero.style.backgroundImage = `url('${newImageUrl}')`;
+                  sessionStorage.setItem('currentAlbumImage', newImageUrl);
+                };
+                img.src = newImageUrl;
+              }
+            }
+          }
+
+          // Restart the timer
+          startRefreshTimer();
+        })
+        .catch(error => {
+          console.error('Refresh failed:', error);
+          // Fallback to restart timer
+          startRefreshTimer();
+        });
+      }, 30000); // Refresh every 30 seconds
+    }
+  }
+
+  startRefreshTimer();
+
+  // Cooldown timer
+  const timer = document.querySelector('.cooldown-timer');
+  if (timer) {
+    let seconds = parseInt(timer.dataset.seconds);
+    const interval = setInterval(function() {
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        location.reload();
+      } else {
+        timer.textContent = seconds;
+      }
+    }, 1000);
+  }
+
+  // Enhanced Search functionality with Turbo support
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('artist-search-input');
+    const searchForm = document.getElementById('artist-search-form');
+
+    if (!searchInput || !searchForm) return;
+
+    let debounceTimer;
+    let lastSearchValue = searchInput.value;
+
+    // Function to perform search
+    function performSearch() {
+      const currentValue = searchInput.value.trim();
+
+      // Only search if value has changed
+      if (currentValue === lastSearchValue) return;
+
+      lastSearchValue = currentValue;
+
+      // Pause auto-refresh while searching
+      clearTimeout(refreshTimer);
+      isSearching = true;
+
+      // Submit the form (Turbo will handle it)
+      searchForm.requestSubmit();
+
+      // Resume refresh timer after search
+      setTimeout(() => {
+        isSearching = false;
+        startRefreshTimer();
+      }, 1000);
+    }
+
+    // Handle typing with debounce
+    searchInput.addEventListener('input', function(e) {
+      clearTimeout(debounceTimer);
+
+      // If the input is empty, search immediately to clear results
+      if (this.value === '') {
+        performSearch();
+        return;
+      }
+
+      // Otherwise, debounce for 400ms
+      debounceTimer = setTimeout(performSearch, 400);
+    });
+
+    // Handle Enter key
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(debounceTimer);
+        performSearch();
+      }
+    });
+
+    // Focus on search input if not playing
+    <% unless @currently_playing %>
+    if (!searchInput.value) {
+      searchInput.focus();
+    }
+    <% end %>
+  });
+</script>

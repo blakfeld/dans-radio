@@ -1,0 +1,168 @@
+<div class="card">
+  <h1>Spotify OAuth Setup</h1>
+
+  <div class="stats-grid" style="margin-bottom: 2rem;">
+    <div class="stat-card">
+      <h3>Spotify Credentials</h3>
+      <div class="stat-value">
+        <% if @spotify_configured %>
+          <span style="color: #51cf66;">✓ Configured</span>
+        <% else %>
+          <span style="color: #ff6b6b;">✗ Missing</span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <h3>Expected Username</h3>
+      <div class="stat-value" style="font-size: 1.2rem;">
+        <%= @configured_username || "Not configured" %>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <h3>Authenticated Users</h3>
+      <div class="stat-value">
+        <%= @spotify_users.count %>
+      </div>
+    </div>
+  </div>
+
+  <% if @spotify_users.any? %>
+    <div class="card" style="background: #f8f9fa;">
+      <h2>Authenticated Spotify Users</h2>
+      <table class="admin-table" style="width: 100%;">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Token Status</th>
+            <th>Expires At</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @spotify_users.each do |user| %>
+            <tr>
+              <td>
+                <%= user.username %>
+                <% if user.username == @configured_username %>
+                  <span style="color: #51cf66; font-weight: bold;"> (Active)</span>
+                <% end %>
+              </td>
+              <td><%= user.email || "-" %></td>
+              <td>
+                <% if user.token.present? %>
+                  <span style="color: #51cf66;">✓ Present</span>
+                <% else %>
+                  <span style="color: #ff6b6b;">✗ Missing</span>
+                <% end %>
+              </td>
+              <td>
+                <% if user.expires_at %>
+                  <%= user.expires_at.strftime("%Y-%m-%d %H:%M") %>
+                  <% time_left = user.expires_at - Time.current %>
+                  <% if time_left > 0 %>
+                    <% hours = (time_left / 3600).to_i %>
+                    <% minutes = ((time_left % 3600) / 60).to_i %>
+                    <br><small style="color: #868e96;">(<%= hours %>h <%= minutes %>m left)</small>
+                    <% if user.token_expiring_soon? %>
+                      <br><span style="color: #ffc107; font-weight: bold;">⚠️ Expiring Soon</span>
+                    <% end %>
+                  <% else %>
+                    <br><span style="color: #ff6b6b; font-weight: bold;">Expired</span>
+                  <% end %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td>
+                <% if user.username == @configured_username && user.token.present? && user.expires_at && user.expires_at > Time.current %>
+                  <span class="status-badge status-playing">Active</span>
+                <% elsif user.expires_at && user.expires_at < Time.current %>
+                  <span class="status-badge status-failed">Expired</span>
+                <% else %>
+                  <span class="status-badge status-queued">Inactive</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <div class="card" style="background: #e3f2fd; border-left: 4px solid #2196f3;">
+    <h2>Setup Instructions</h2>
+
+    <% if !@spotify_configured %>
+      <div style="margin-bottom: 1rem; padding: 1rem; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+        <strong>⚠️ Spotify credentials not configured!</strong>
+        <p>Run <code>rails credentials:edit</code> and add:</p>
+        <pre style="background: #f5f5f5; padding: 0.5rem; border-radius: 4px;">spotify:
+  client_id: your_client_id_here
+  client_secret: your_client_secret_here</pre>
+      </div>
+    <% end %>
+
+    <ol style="line-height: 1.8;">
+      <li>Make sure your Spotify app has <code>http://localhost:3000/auth/spotify/callback</code> as a redirect URI</li>
+      <li>Click "Authenticate with Spotify" below</li>
+      <li>Log in with the Spotify account that owns the playlists (username: <strong><%= @configured_username %></strong>)</li>
+      <li>After authentication, you can test the connection</li>
+    </ol>
+  </div>
+
+  <div style="text-align: center; margin-top: 2rem;">
+    <% if @spotify_configured %>
+      <%= link_to "🎵 Authenticate with Spotify", spotify_auth_setup_index_path,
+          class: "pure-button pure-button-primary",
+          style: "font-size: 1.2rem; padding: 1rem 2rem;" %>
+
+      <% if @spotify_users.any? %>
+        <%= link_to "🧪 Test Connection", test_connection_setup_index_path,
+            class: "pure-button",
+            style: "margin-left: 1rem;" %>
+
+        <%= link_to "🔄 Refresh Tokens", refresh_tokens_setup_index_path,
+            method: :post,
+            class: "pure-button",
+            style: "margin-left: 1rem; background: #2196f3; color: white;" %>
+
+        <%= link_to "🗑️ Clear All Auth Data", clear_auth_setup_index_path,
+            method: :delete,
+            data: { confirm: "Are you sure? This will remove all authenticated users." },
+            class: "pure-button",
+            style: "margin-left: 1rem; background: #ff6b6b; color: white;" %>
+      <% end %>
+    <% else %>
+      <p style="color: #ff6b6b;">Please configure Spotify credentials first!</p>
+    <% end %>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
+  <h2>After Authentication</h2>
+  <p>Once authenticated, you can sync playlists using:</p>
+  <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; font-family: monospace;">rails spotify:sync_playlist_tracks["Your Playlist Name"]</pre>
+
+  <p>Or search for playlists:</p>
+  <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; font-family: monospace;">rails spotify:search_playlists["search term"]</pre>
+</div>
+
+<div class="card" style="margin-top: 2rem; background: #e8f5e9; border-left: 4px solid #4caf50;">
+  <h2>🔄 Automatic Token Refresh</h2>
+  <p><strong>Your Spotify tokens are automatically refreshed!</strong></p>
+  <ul style="line-height: 1.8;">
+    <li>Tokens are automatically refreshed when they're about to expire</li>
+    <li>A background job runs every 30 minutes to refresh expiring tokens</li>
+    <li>You can manually refresh tokens using the button above</li>
+    <li>Check token status: <code>rails spotify:token_status</code></li>
+    <li>Manual refresh: <code>rails spotify:refresh_tokens</code></li>
+  </ul>
+  <p style="margin-top: 1rem;"><em>Note: Spotify access tokens are valid for 1 hour. The system will automatically refresh them using your refresh token before they expire.</em></p>
+</div>
+
+<div style="text-align: center; margin-top: 2rem;">
+  <%= link_to "← Back to Admin", admin_root_path, class: "pure-button" %>
+</div>

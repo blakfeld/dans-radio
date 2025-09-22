@@ -1,0 +1,48 @@
+<div class="admin-header">
+  <h1>Tracks Management</h1>
+</div>
+
+<% if @tracks.any? %>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Artist</th>
+        <th>Album</th>
+        <th>Duration</th>
+        <th>Explicit</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @tracks.each do |track| %>
+        <tr>
+          <td>#<%= track.id %></td>
+          <td><%= track.title %></td>
+          <td><%= track.artist&.name || '-' %></td>
+          <td><%= track.album&.name || '-' %></td>
+          <td><%= track.duration_formatted || '-' %></td>
+          <td>
+            <% if track.explicit %>
+              <span style="color: #ff6b6b;">Yes</span>
+            <% else %>
+              No
+            <% end %>
+          </td>
+          <td>
+            <%= link_to "Delete", admin_track_path(track),
+                method: :delete,
+                data: { confirm: "Are you sure?" },
+                class: "pure-button pure-button-sm",
+                style: "font-size: 0.8rem;" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <div class="empty-state">
+    <p>No tracks found.</p>
+  </div>
+<% end %>

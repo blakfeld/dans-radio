@@ -1,0 +1,333 @@
+<%= render 'shared/navigation', current_page: 'browse' %>
+
+<% if !@can_request %>
+  <div class="cooldown-notice">
+    <p>Please wait <span class="cooldown-timer" data-seconds="<%= @cooldown_remaining %>"><%= @cooldown_remaining %></span> seconds before making another request.</p>
+  </div>
+<% end %>
+
+<div class="card">
+  <div class="album-header">
+    <!-- Album Cover -->
+    <div class="album-cover">
+      <% if @album.images && @album.images.any? && @album.images.first['url'] %>
+        <%= image_tag @album.images.first['url'], alt: @album.name %>
+      <% else %>
+        <div class="album-placeholder-large">
+          <%= @album.name.first.upcase %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Album Info -->
+    <div class="album-info">
+      <div class="album-type"><%= @album.album_type&.capitalize || 'Album' %></div>
+      <h1 class="album-title"><%= @album.name %></h1>
+      <div class="album-meta">
+        <%= link_to @artist.name, artist_path(@artist), class: "album-artist" %>
+        <% if @album.release_date %>
+          <span class="separator">•</span>
+          <span class="release-year"><%= @album.release_date.split('-').first %></span>
+        <% end %>
+        <% if @album.total_tracks %>
+          <span class="separator">•</span>
+          <span class="track-count"><%= pluralize(@album.total_tracks, 'track') %></span>
+        <% end %>
+        <% if @tracks.any? %>
+          <span class="separator">•</span>
+          <span class="duration">
+            <% total_ms = @tracks.sum(&:duration_ms) || 0 %>
+            <% total_minutes = (total_ms / 60000.0).round %>
+            <%= total_minutes %> min
+          </span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Track List -->
+  <div class="album-tracks">
+    <% if @tracks.any? %>
+      <table class="track-table">
+        <thead>
+          <tr>
+            <th class="track-number-col">#</th>
+            <th class="track-title-col">Title</th>
+            <th class="track-duration-col">Duration</th>
+            <th class="track-action-col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @tracks.each do |track| %>
+            <tr class="track-row">
+              <td class="track-number"><%= track.track_number || '-' %></td>
+              <td class="track-title">
+                <span class="track-name"><%= track.title %></span>
+                <% if track.explicit %>
+                  <span class="explicit-badge">E</span>
+                <% end %>
+                <% if track.popularity && track.popularity > 70 %>
+                  <span class="popular-badge" title="Popular track">🔥</span>
+                <% end %>
+              </td>
+              <td class="track-duration"><%= track.duration_formatted || '-' %></td>
+              <td class="track-action">
+                <% if @can_request %>
+                  <%= form_with url: requests_path, method: :post, local: true, class: "request-form" do |f| %>
+                    <%= hidden_field_tag :track_id, track.id %>
+                    <%= f.submit "Request", class: "pure-button pure-button-primary request-button-small" %>
+                  <% end %>
+                <% else %>
+                  <button class="pure-button request-button-small" disabled title="Cooldown active">
+                    Cooldown
+                  </button>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="empty-state">
+        <div class="empty-state-icon">💿</div>
+        <p>No tracks found for this album</p>
+        <p class="muted">Track information may be loading...</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .album-header {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .album-cover {
+    flex-shrink: 0;
+    width: 200px;
+    height: 200px;
+  }
+
+  .album-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .album-placeholder-large {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 4rem;
+    font-weight: bold;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .album-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .album-type {
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #868e96;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+  }
+
+  .album-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 0 1rem 0;
+    color: #1a1a1a;
+  }
+
+  .album-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    color: #495057;
+    font-size: 0.95rem;
+  }
+
+  .album-artist {
+    color: #ff6b6b;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+
+  .album-artist:hover {
+    color: #ff5252;
+    text-decoration: underline;
+  }
+
+  .separator {
+    color: #adb5bd;
+  }
+
+  /* Track Table */
+  .album-tracks {
+    margin-top: 2rem;
+  }
+
+  .track-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .track-table thead th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .track-number-col {
+    width: 50px;
+  }
+
+  .track-title-col {
+    flex: 1;
+  }
+
+  .track-duration-col {
+    width: 80px;
+    text-align: right;
+  }
+
+  .track-action-col {
+    width: 100px;
+    text-align: right;
+  }
+
+  .track-row {
+    transition: background-color 0.2s;
+    border-bottom: 1px solid #f1f3f5;
+  }
+
+  .track-row:hover {
+    background-color: #f8f9fa;
+  }
+
+  .track-row td {
+    padding: 0.75rem;
+  }
+
+  .track-number {
+    color: #adb5bd;
+    font-size: 0.9rem;
+  }
+
+  .track-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .track-name {
+    color: #1a1a1a;
+    font-weight: 500;
+  }
+
+  .explicit-badge {
+    display: inline-block;
+    background: #dc3545;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+  }
+
+  .popular-badge {
+    font-size: 0.9rem;
+  }
+
+  .track-duration {
+    color: #6c757d;
+    text-align: right;
+    font-size: 0.9rem;
+  }
+
+  .request-form {
+    display: inline;
+  }
+
+  .request-button-small {
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  /* Mobile Responsive */
+  @media screen and (max-width: 768px) {
+    .album-header {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .album-cover {
+      width: 150px;
+      height: 150px;
+    }
+
+    .album-title {
+      font-size: 1.5rem;
+    }
+
+    .track-table {
+      font-size: 0.9rem;
+    }
+
+    .track-duration-col,
+    .track-duration {
+      display: none;
+    }
+
+    .track-table thead th,
+    .track-row td {
+      padding: 0.5rem;
+    }
+
+    .request-button-small {
+      padding: 0.3rem 0.8rem;
+      font-size: 0.8rem;
+    }
+  }
+</style>
+
+<script>
+  // Cooldown timer
+  const timer = document.querySelector('.cooldown-timer');
+  if (timer) {
+    let seconds = parseInt(timer.dataset.seconds);
+    const interval = setInterval(function() {
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        location.reload();
+      } else {
+        timer.textContent = seconds;
+      }
+    }, 1000);
+  }
+</script>

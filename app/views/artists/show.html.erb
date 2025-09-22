@@ -1,0 +1,359 @@
+<%= render 'shared/navigation', current_page: 'artists' %>
+
+<% if !@can_request %>
+  <div class="cooldown-notice">
+    <p>Please wait <span class="cooldown-timer" data-seconds="<%= @cooldown_remaining %>"><%= @cooldown_remaining %></span> seconds before making another request.</p>
+  </div>
+<% end %>
+
+<div class="artist-header card">
+  <% if @artist.images && @artist.images.any? && @artist.images.first['url'] %>
+    <%= image_tag @artist.images.first['url'], alt: @artist.name, class: "artist-image" %>
+  <% else %>
+    <div class="artist-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+      <%= @artist.name.first.upcase %>
+    </div>
+  <% end %>
+
+  <div class="artist-details">
+    <h1><%= @artist.name %></h1>
+    <% if @artist.genres && @artist.genres.any? %>
+      <p class="genres">
+        <strong>Genres:</strong> <%= @artist.genres.join(', ') %>
+      </p>
+    <% end %>
+    <% if @artist.popularity %>
+      <p>
+        <strong>Popularity:</strong>
+        <span style="color: var(--accent-color);">
+          <%= '★' * (@artist.popularity / 20) %><%= '☆' * (5 - @artist.popularity / 20) %>
+        </span>
+      </p>
+    <% end %>
+  </div>
+</div>
+
+<% if @artist.bio.present? %>
+  <div class="card artist-bio">
+    <h2>About <%= @artist.name %></h2>
+    <p><%= @artist.bio %></p>
+  </div>
+<% end %>
+
+<div class="card">
+  <h2>Top Songs</h2>
+
+  <% if @top_tracks.any? %>
+    <div class="pure-g">
+      <div class="pure-u-1 pure-u-md-1-2" style="padding-right: 1rem;">
+        <ul class="item-list">
+          <% @top_tracks.first(5).each_with_index do |track, index| %>
+            <li>
+              <div class="item-info">
+                <span class="track-rank"><%= index + 1 %>.</span>
+                <span class="item-title"><%= track.title %></span>
+                <% if track.popularity && track.popularity > 70 %>
+                  <span class="popular-badge" title="Popular track">🔥</span>
+                <% end %>
+                <span class="item-subtitle">
+                  <% if track.album %>
+                    <%= link_to track.album.name, album_path(track.album), class: "album-link" %>
+                    <% if track.album.release_date %>
+                      (<%= track.album.release_date.split('-').first %>)
+                    <% end %>
+                  <% end %>
+                  <% if track.duration_ms %>
+                    • <%= track.duration_formatted %>
+                  <% end %>
+                  <% if track.explicit %>
+                    • <span style="color: var(--accent-color);">Explicit</span>
+                  <% end %>
+                </span>
+              </div>
+              <% if @can_request %>
+                <%= form_with url: requests_path, method: :post, local: true, style: "display: inline;" do |f| %>
+                  <%= hidden_field_tag :track_id, track.id %>
+                  <%= f.submit "Request", class: "pure-button pure-button-primary request-button" %>
+                <% end %>
+              <% else %>
+                <button class="pure-button request-button" disabled>
+                  Cooldown
+                </button>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+
+      <% if @top_tracks.count > 5 %>
+        <div class="pure-u-1 pure-u-md-1-2" style="padding-left: 1rem;">
+          <ul class="item-list">
+            <% @top_tracks.drop(5).first(5).each_with_index do |track, index| %>
+              <li>
+                <div class="item-info">
+                  <span class="track-rank"><%= index + 6 %>.</span>
+                  <span class="item-title"><%= track.title %></span>
+                  <% if track.popularity && track.popularity > 70 %>
+                    <span class="popular-badge" title="Popular track">🔥</span>
+                  <% end %>
+                  <span class="item-subtitle">
+                    <% if track.album %>
+                      <%= link_to track.album.name, album_path(track.album), class: "album-link" %>
+                      <% if track.album.release_date %>
+                        (<%= track.album.release_date.split('-').first %>)
+                      <% end %>
+                    <% end %>
+                    <% if track.duration_ms %>
+                      • <%= track.duration_formatted %>
+                    <% end %>
+                    <% if track.explicit %>
+                      • <span style="color: var(--accent-color);">Explicit</span>
+                    <% end %>
+                  </span>
+                </div>
+                <% if @can_request %>
+                  <%= form_with url: requests_path, method: :post, local: true, style: "display: inline;" do |f| %>
+                    <%= hidden_field_tag :track_id, track.id %>
+                    <%= f.submit "Request", class: "pure-button pure-button-primary request-button" %>
+                  <% end %>
+                <% else %>
+                  <button class="pure-button request-button" disabled>
+                    Cooldown
+                  </button>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+    </div>
+
+    <p style="margin-top: 1rem; color: var(--muted-color); font-size: 0.9rem; clear: both;">
+      <em>Showing top <%= @top_tracks.count %> tracks from Spotify</em>
+    </p>
+  <% else %>
+    <div class="empty-state">
+      <div class="empty-state-icon">🎵</div>
+      <p>Top songs are loading...</p>
+      <p class="muted">Check back in a moment</p>
+    </div>
+  <% end %>
+</div>
+
+<% if @albums.any? %>
+  <div class="card">
+    <h2>Albums <span style="color: var(--muted-color); font-size: 0.8rem; font-weight: normal;">(<%= @albums.count %> total)</span></h2>
+
+    <!-- Recent Albums (always visible) -->
+    <div class="pure-g" id="recent-albums">
+      <% @albums.first(10).each do |album| %>
+        <div class="pure-u-1-2 pure-u-sm-1-3 pure-u-md-1-4 pure-u-lg-1-6" style="padding: 0.25rem;">
+          <%= link_to album_path(album), class: "album-card-link" do %>
+            <div class="card album-card" style="margin-bottom: 0; padding: 0.5rem;">
+              <% if album.images && album.images.any? && album.images.first['url'] %>
+                <%= image_tag album.images.first['url'], alt: album.name, style: "width: 100%; border-radius: 4px; aspect-ratio: 1; object-fit: cover;" %>
+              <% else %>
+                <div style="width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; font-weight: bold;">
+                  <%= album.name.first.upcase %>
+                </div>
+              <% end %>
+              <h3 style="margin-top: 0.35rem; margin-bottom: 0.15rem; font-size: 0.85rem; line-height: 1.2;"><%= album.name %></h3>
+              <p style="color: var(--muted-color); font-size: 0.75rem; line-height: 1.3;">
+                <%= album.album_type&.capitalize %> •
+                <%= album.release_date&.split('-')&.first %>
+                <% if album.total_tracks && album.total_tracks > 0 %>
+                  • <%= album.total_tracks %> tracks
+                <% end %>
+              </p>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+      <!-- Hidden Albums (shown when expanded) -->
+      <% if @albums.count > 10 %>
+        <div class="pure-g hidden-albums-container" id="hidden-albums">
+        <% @albums.drop(10).each do |album| %>
+          <div class="pure-u-1-2 pure-u-sm-1-3 pure-u-md-1-4 pure-u-lg-1-6" style="padding: 0.25rem;">
+            <%= link_to album_path(album), class: "album-card-link" do %>
+              <div class="card album-card" style="margin-bottom: 0; padding: 0.5rem;">
+                <% if album.images && album.images.any? && album.images.first['url'] %>
+                  <%= image_tag album.images.first['url'], alt: album.name, style: "width: 100%; border-radius: 4px; aspect-ratio: 1; object-fit: cover;" %>
+                <% else %>
+                  <div style="width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; font-weight: bold;">
+                    <%= album.name.first.upcase %>
+                  </div>
+                <% end %>
+                <h3 style="margin-top: 0.35rem; margin-bottom: 0.15rem; font-size: 0.85rem; line-height: 1.2;"><%= album.name %></h3>
+                <p style="color: var(--muted-color); font-size: 0.75rem; line-height: 1.3;">
+                  <%= album.album_type&.capitalize %> •
+                  <%= album.release_date&.split('-')&.first %>
+                  <% if album.total_tracks && album.total_tracks > 0 %>
+                    • <%= album.total_tracks %> tracks
+                  <% end %>
+                </p>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- See More/Less Button -->
+      <div style="text-align: center; margin-top: 1.5rem;">
+        <button id="toggle-albums-btn" class="pure-button" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+          <span id="toggle-text">See More Albums</span>
+          <span id="toggle-icon" style="margin-left: 0.5rem; display: inline-block; transition: transform 0.3s;">▼</span>
+        </button>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<style>
+  .track-rank {
+    display: inline-block;
+    width: 25px;
+    color: #868e96;
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+
+  .popular-badge {
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+  }
+
+  .album-link {
+    color: #ff6b6b;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .album-link:hover {
+    color: #ff5252;
+    text-decoration: underline;
+  }
+
+  .album-card-link {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .album-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  .album-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .item-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .item-info {
+    display: flex;
+    align-items: baseline;
+    flex: 1;
+    gap: 0.5rem;
+  }
+
+  .item-title {
+    font-weight: 600;
+  }
+
+  .item-subtitle {
+    color: #6c757d;
+    font-size: 0.9rem;
+    flex: 1;
+  }
+
+  /* Responsive column adjustments for top tracks */
+  @media (max-width: 768px) {
+    .pure-u-md-1-2[style*="padding-right"] {
+      padding-right: 0 !important;
+      padding-bottom: 1rem;
+    }
+    .pure-u-md-1-2[style*="padding-left"] {
+      padding-left: 0 !important;
+      padding-top: 1rem;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .pure-u-md-1-2 .item-list li {
+      padding: 0.75rem 0;
+    }
+  }
+
+  /* Album expansion animation */
+  .hidden-albums-container {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-in-out;
+  }
+
+  .hidden-albums-container.expanded {
+    max-height: 2000px; /* Large enough to show all albums */
+  }
+
+  /* See More button styling */
+  #toggle-albums-btn {
+    transition: all 0.3s ease;
+    font-weight: 600;
+    padding: 0.8rem 2rem;
+  }
+
+  #toggle-albums-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+</style>
+
+<script>
+  // Cooldown timer
+  const timer = document.querySelector('.cooldown-timer');
+  if (timer) {
+    let seconds = parseInt(timer.dataset.seconds);
+    const interval = setInterval(function() {
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        location.reload();
+      } else {
+        timer.textContent = seconds;
+      }
+    }, 1000);
+  }
+
+  // Toggle Albums functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggle-albums-btn');
+    const hiddenAlbums = document.getElementById('hidden-albums');
+    const toggleText = document.getElementById('toggle-text');
+    const toggleIcon = document.getElementById('toggle-icon');
+
+    if (toggleBtn && hiddenAlbums) {
+      let isExpanded = false;
+
+      toggleBtn.addEventListener('click', function() {
+        isExpanded = !isExpanded;
+
+        if (isExpanded) {
+          hiddenAlbums.classList.add('expanded');
+          toggleText.textContent = 'See Less Albums';
+          toggleIcon.style.transform = 'rotate(180deg)';
+        } else {
+          hiddenAlbums.classList.remove('expanded');
+          toggleText.textContent = 'See More Albums';
+          toggleIcon.style.transform = 'rotate(0deg)';
+        }
+      });
+    }
+  });
+</script>

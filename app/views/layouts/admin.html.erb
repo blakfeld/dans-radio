@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin - Dans Radio</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%# PureCSS from CDN %>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.0.0/build/pure-min.css" integrity="sha384-X38yfunGUhNzHpBaEBsWLO+A0HDYOQi8ufWDkZ0k9e0eXz/tH3II7uKZ9msv++Ls" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.0.0/build/grids-responsive-min.css">
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+
+    <style>
+      .admin-sidebar {
+        background: #1a1a1a;
+        color: white;
+        padding: 1rem;
+        min-height: 100vh;
+      }
+      .admin-sidebar h2 {
+        margin-top: 0;
+        color: #ff6b6b;
+      }
+      .admin-sidebar a {
+        color: white;
+        text-decoration: none;
+        display: block;
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin-bottom: 0.25rem;
+        transition: background 0.2s;
+      }
+      .admin-sidebar a:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .admin-sidebar a.active {
+        background: #ff6b6b;
+      }
+      .admin-content {
+        padding: 2rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+      }
+      .admin-header {
+        background: white;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .admin-header h1 {
+        margin: 0;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .stat-card h3 {
+        margin-top: 0;
+        color: #868e96;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+      }
+      .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #1a1a1a;
+      }
+      .admin-table {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .admin-table th {
+        background: #1a1a1a;
+        color: white;
+        padding: 1rem;
+        text-align: left;
+      }
+      .admin-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+      }
+      .admin-table tr:last-child td {
+        border-bottom: none;
+      }
+      .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .status-pending { background: #fff3cd; color: #856404; }
+      .status-queued { background: #d1ecf1; color: #0c5460; }
+      .status-playing { background: #d4edda; color: #155724; }
+      .status-played { background: #e2e3e5; color: #383d41; }
+      .status-failed { background: #f8d7da; color: #721c24; }
+    </style>
+  </head>
+
+  <body>
+    <div class="pure-g">
+      <div class="pure-u-1 pure-u-md-1-5">
+        <div class="admin-sidebar">
+          <h2>Admin Panel</h2>
+          <%= link_to "Dashboard", admin_root_path, class: controller_name == 'dashboard' ? 'active' : '' %>
+          <%= link_to "Song Requests", admin_song_requests_path, class: controller_name == 'song_requests' ? 'active' : '' %>
+          <%= link_to "Artists", admin_artists_path, class: controller_name == 'artists' ? 'active' : '' %>
+          <%= link_to "Tracks", admin_tracks_path, class: controller_name == 'tracks' ? 'active' : '' %>
+          <%= link_to "Albums", admin_albums_path, class: controller_name == 'albums' ? 'active' : '' %>
+          <hr style="margin: 1rem 0; opacity: 0.3;">
+          <%= link_to "🔧 Spotify Setup", setup_index_path, style: "background: #2196f3;" %>
+          <%= link_to "← Back to Site", root_path %>
+        </div>
+      </div>
+
+      <div class="pure-u-1 pure-u-md-4-5">
+        <div class="admin-content">
+          <% if flash[:notice] %>
+            <div class="flash notice">
+              <%= flash[:notice] %>
+            </div>
+          <% end %>
+
+          <% if flash[:alert] %>
+            <div class="flash alert">
+              <%= flash[:alert] %>
+            </div>
+          <% end %>
+
+          <%= yield %>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

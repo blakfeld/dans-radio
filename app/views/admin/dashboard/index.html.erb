@@ -1,0 +1,77 @@
+<div class="admin-header">
+  <h1>Admin Dashboard</h1>
+  <p>Manage your radio station content and requests</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <h3>Total Artists</h3>
+    <div class="stat-value"><%= @total_artists %></div>
+  </div>
+
+  <div class="stat-card">
+    <h3>Total Tracks</h3>
+    <div class="stat-value"><%= @total_tracks %></div>
+  </div>
+
+  <div class="stat-card">
+    <h3>Total Albums</h3>
+    <div class="stat-value"><%= @total_albums %></div>
+  </div>
+
+  <div class="stat-card">
+    <h3>Pending Requests</h3>
+    <div class="stat-value" style="color: #ff6b6b;"><%= @pending_requests %></div>
+  </div>
+</div>
+
+<% if @currently_playing %>
+  <div class="card">
+    <h2>Currently Playing</h2>
+    <p>
+      <strong><%= @currently_playing.track_title %></strong> by <%= @currently_playing.artist %>
+      <span class="status-badge status-playing">Playing</span>
+    </p>
+  </div>
+<% end %>
+
+<div class="card">
+  <h2>Recent Requests</h2>
+
+  <% if @recent_requests.any? %>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Track</th>
+          <th>Artist</th>
+          <th>Status</th>
+          <th>Requested</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @recent_requests.each do |request| %>
+          <tr>
+            <td><%= request.track_title %></td>
+            <td><%= request.artist %></td>
+            <td>
+              <span class="status-badge status-<%= request.status %>">
+                <%= request.status.capitalize %>
+              </span>
+            </td>
+            <td><%= time_ago_in_words(request.created_at) %> ago</td>
+            <td>
+              <%= link_to "View", admin_song_request_path(request), class: "pure-button pure-button-sm" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <div style="text-align: center; margin-top: 1rem;">
+      <%= link_to "View All Requests", admin_song_requests_path, class: "pure-button pure-button-primary" %>
+    </div>
+  <% else %>
+    <p>No requests yet.</p>
+  <% end %>
+</div>

@@ -1,0 +1,116 @@
+name: Nightly Test Run
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  full-test-suite:
+    name: Full Test Suite with Extended Coverage
+    runs-on: ubuntu-latest
+
+    env:
+      RAILS_ENV: test
+      COVERAGE: true
+      SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+      SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup test database
+        run: |
+          bundle exec rails db:create
+          bundle exec rails db:schema:load
+          bundle exec rails db:test:prepare
+
+      - name: Run full test suite
+        run: |
+          bundle exec rails test
+          bundle exec rails test:system
+
+      - name: Generate coverage summary
+        run: bundle exec rake test:summary
+
+      - name: Check coverage thresholds
+        run: |
+          ruby -e "
+            require 'json'
+            data = JSON.parse(File.read('coverage/.last_run.json'))
+            total = data['result']['covered_percent']
+
+            puts '=' * 50
+            puts 'Coverage Report:'
+            data['result']['covered_percent_group'].each do |group, pct|
+              puts \"  #{group}: #{'%.2f' % pct}%\"
+            end
+            puts \"  TOTAL: #{'%.2f' % total}%\"
+            puts '=' * 50
+
+            if total < 90
+              puts 'ERROR: Coverage below 90% threshold!'
+              exit 1
+            else
+              puts 'SUCCESS: Coverage meets requirements!'
+            end
+          "
+
+      - name: Upload detailed coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: nightly-coverage-report
+          path: coverage/
+          retention-days: 30
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Nightly test run failed',
+              body: 'The nightly test run failed. Please check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.',
+              labels: ['automated', 'test-failure']
+            })
+
+  dependency-audit:
+    name: Security and Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Run bundle audit
+        run: |
+          gem install bundler-audit
+          bundle audit check --update
+
+      - name: Run Brakeman deep scan
+        run: bundle exec brakeman -A -w1
+
+      - name: Check for outdated dependencies
+        run: bundle outdated --strict
+

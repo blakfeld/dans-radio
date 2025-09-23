@@ -1,13 +1,23 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  song_name: MyString
-  song_artist: MyString
-  song_uri: MyString
-  state: MyString
+  track: one  # Reference to track fixture 'one'
+  track_id: track_111
+  artist: Test Artist One
+  track_title: Test Song One
+  track_uri: spotify:track:track_111
+  status: pending
+  state: active
+  position: 0
+  request_queue: default_queue  # Reference to request_queue fixture
 
 two:
-  song_name: MyString
-  song_artist: MyString
-  song_uri: MyString
-  state: MyString
+  track: two  # Reference to track fixture 'two'
+  track_id: track_222
+  artist: Test Artist One
+  track_title: Test Song Two
+  track_uri: spotify:track:track_222
+  status: queued
+  state: active
+  position: 1
+  request_queue: default_queue  # Reference to request_queue fixture

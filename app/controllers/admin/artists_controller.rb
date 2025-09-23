@@ -1,5 +1,6 @@
 module Admin
-  class ArtistsController < BaseController
+  class ArtistsController < ::ApplicationController
+    before_action :require_admin
     before_action :set_artist, only: [ :show, :edit, :update, :destroy ]
 
     def index

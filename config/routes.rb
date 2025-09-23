@@ -1,9 +1,14 @@
 Rails.application.routes.draw do
+  # User Authentication
+  get "/login", to: "sessions#new"
+  post "/login", to: "sessions#create"
+  delete "/logout", to: "sessions#destroy"
+
   # Spotify OAuth routes
   # NOTE: /auth/spotify is handled by OmniAuth middleware, not a Rails route
   # Only the callback needs a Rails route
   get "/auth/spotify/callback", to: "auth#callback"
-  get "/login", to: "auth#login", as: :spotify_login
+  get "/spotify_login", to: "auth#login", as: :spotify_login
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
@@ -50,9 +55,20 @@ Rails.application.routes.draw do
     end
   end
 
-  # Admin routes
+  # Admin routes (Administrate + Custom)
   namespace :admin do
-    root to: "dashboard#index"
+    # Administrate resources
+    resources :users do
+      member do
+        patch :toggle_admin
+        patch :unlock
+      end
+    end
+
+    # Keep existing custom controllers for now
+    resources :artists
+    resources :albums
+    resources :tracks
     resources :song_requests do
       member do
         patch :approve
@@ -62,8 +78,8 @@ Rails.application.routes.draw do
         delete :clear_queue
       end
     end
-    resources :artists
-    resources :tracks
-    resources :albums
+
+    # Use the custom dashboard
+    root to: "dashboard#index"
   end
 end

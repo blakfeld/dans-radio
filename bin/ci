@@ -1,0 +1,152 @@
+#!/usr/bin/env ruby
+
+# Local CI runner - Run the same checks as GitHub Actions locally
+# Usage: bin/ci [quick|full|coverage]
+
+require 'fileutils'
+require 'open3'
+
+class LocalCI
+  CHECKMARK = "✓"
+  XMARK = "✗"
+
+  def initialize(mode = 'quick')
+    @mode = mode
+    @errors = []
+    @warnings = []
+  end
+
+  def run
+    puts "=" * 80
+    puts "Running Local CI Checks (#{@mode} mode)"
+    puts "=" * 80
+    puts
+
+    case @mode
+    when 'full'
+      run_full_suite
+    when 'coverage'
+      run_coverage_suite
+    else
+      run_quick_suite
+    end
+
+    print_summary
+    exit(@errors.empty? ? 0 : 1)
+  end
+
+  private
+
+  def run_quick_suite
+    run_check("Database setup") { system("rails db:test:prepare", out: File::NULL, err: File::NULL) }
+    run_check("RuboCop") { system("bundle exec rubocop --parallel", out: File::NULL, err: File::NULL) }
+    run_check("Model tests") { system("rails test test/models", out: File::NULL, err: File::NULL) }
+    run_check("Controller tests") { system("rails test test/controllers", out: File::NULL, err: File::NULL) }
+    run_check("Service tests") { system("rails test test/services 2>/dev/null", out: File::NULL, err: File::NULL) }
+    run_check("Job tests") { system("rails test test/jobs 2>/dev/null", out: File::NULL, err: File::NULL) }
+  end
+
+  def run_full_suite
+    run_check("Database setup") { system("rails db:test:prepare", out: File::NULL, err: File::NULL) }
+    run_check("RuboCop") { system("bundle exec rubocop --parallel", out: File::NULL, err: File::NULL) }
+    run_check("Brakeman security") { system("bundle exec brakeman -q -w2", out: File::NULL, err: File::NULL) }
+    run_check("All tests") { system("rails test", out: File::NULL, err: File::NULL) }
+    run_check("System tests") { system("rails test:system 2>/dev/null", out: File::NULL, err: File::NULL) }
+  end
+
+  def run_coverage_suite
+    ENV['COVERAGE'] = 'true'
+
+    run_check("Database setup") { system("rails db:test:prepare", out: File::NULL, err: File::NULL) }
+    run_check("Tests with coverage") { system("rails test", out: File::NULL, err: File::NULL) }
+
+    if File.exist?('coverage/.last_run.json')
+      check_coverage_thresholds
+    end
+
+    puts "\nCoverage report: coverage/index.html"
+  end
+
+  def run_check(name, &block)
+    print "  #{name}... "
+
+    success = yield
+
+    if success
+      puts "#{CHECKMARK} passed"
+    else
+      puts "#{XMARK} failed"
+      @errors << name
+    end
+
+    success
+  end
+
+  def check_coverage_thresholds
+    require 'json'
+
+    data = JSON.parse(File.read('coverage/.last_run.json'))
+    total = data['result']['covered_percent']
+
+    puts "\nCoverage Results:"
+    puts "-" * 40
+
+    data['result']['covered_percent_group'].each do |group, pct|
+      status = pct >= 90 ? CHECKMARK : XMARK
+      color = pct >= 90 ? "\e[32m" : "\e[31m"
+      puts "  #{status} #{group}: #{color}#{'%.2f' % pct}%\e[0m"
+
+      @warnings << "#{group} coverage below 90%" if pct < 90
+    end
+
+    puts "-" * 40
+    status = total >= 90 ? CHECKMARK : XMARK
+    color = total >= 90 ? "\e[32m" : "\e[31m"
+    puts "  #{status} TOTAL: #{color}#{'%.2f' % total}%\e[0m"
+
+    @errors << "Total coverage below 90%" if total < 90
+  end
+
+  def print_summary
+    puts
+    puts "=" * 80
+
+    if @errors.empty? && @warnings.empty?
+      puts "\e[32m#{CHECKMARK} All checks passed!\e[0m"
+      puts "Ready to commit and push."
+    else
+      if @errors.any?
+        puts "\e[31m#{XMARK} FAILED CHECKS:\e[0m"
+        @errors.each { |error| puts "  - #{error}" }
+      end
+
+      if @warnings.any?
+        puts "\e[33m⚠ WARNINGS:\e[0m"
+        @warnings.each { |warning| puts "  - #{warning}" }
+      end
+
+      puts
+      puts "Please fix issues before pushing to GitHub."
+    end
+
+    puts "=" * 80
+  end
+end
+
+# Parse arguments
+mode = ARGV[0] || 'quick'
+
+unless %w[quick full coverage].include?(mode)
+  puts "Usage: bin/ci [quick|full|coverage]"
+  puts "  quick    - Run essential tests (default)"
+  puts "  full     - Run all tests and security checks"
+  puts "  coverage - Run tests with coverage analysis"
+  exit 1
+end
+
+# Set Rails environment
+ENV['RAILS_ENV'] = 'test'
+
+# Run the CI checks
+LocalCI.new(mode).run
+

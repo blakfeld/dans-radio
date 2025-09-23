@@ -23,6 +23,23 @@
     <h3>Pending Requests</h3>
     <div class="stat-value" style="color: #ff6b6b;"><%= @pending_requests %></div>
   </div>
+
+  <div class="stat-card">
+    <h3>Total Users</h3>
+    <div class="stat-value"><%= @total_users %></div>
+    <div style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">
+      Admins: <%= @admin_users %> | Locked: <%= @locked_users %>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <h3>Quick Actions</h3>
+    <div style="margin-top: 0.5rem;">
+      <%= link_to "Manage Users", admin_users_path, class: "pure-button pure-button-sm pure-button-primary", style: "margin: 2px;" %>
+      <%= link_to "Add User", new_admin_user_path, class: "pure-button pure-button-sm", style: "margin: 2px;" %>
+      <%= link_to "Setup", setup_index_path, class: "pure-button pure-button-sm", style: "margin: 2px;" %>
+    </div>
+  </div>
 </div>
 
 <% if @currently_playing %>

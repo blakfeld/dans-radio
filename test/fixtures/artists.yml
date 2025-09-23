@@ -1,7 +1,21 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  name: MyString
+  spotify_id: artist_123
+  name: Test Artist One
+  genres: '["rock", "indie"]'
+  href: https://api.spotify.com/v1/artists/artist_123
+  popularity: 75
+  uri: spotify:artist:artist_123
+  images: '[]'
+  bio: "A great test artist from Denton"
 
 two:
-  name: MyString
+  spotify_id: artist_456
+  name: Test Artist Two
+  genres: '["pop", "electronic"]'
+  href: https://api.spotify.com/v1/artists/artist_456
+  popularity: 65
+  uri: spotify:artist:artist_456
+  images: '[]'
+  bio: "Another amazing Denton band"

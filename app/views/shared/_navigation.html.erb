@@ -1,7 +1,20 @@
 <nav class="radio-header">
-  <h1 class="radio-title">
-    <%= link_to "dan's radio", root_path %>
-  </h1>
+  <div class="radio-nav-container">
+    <div class="radio-nav-left"></div>
+    <h1 class="radio-title">
+      <%= link_to "dan's radio", root_path %>
+    </h1>
+    <div class="radio-nav-right">
+      <% if logged_in? %>
+        <% if admin_user? %>
+          <%= link_to "Admin", admin_root_path, class: "nav-btn nav-btn-admin" %>
+        <% end %>
+        <%= button_to "Logout", logout_path, method: :delete, class: "nav-btn nav-btn-logout" %>
+      <% else %>
+        <%= link_to "Login", login_path, class: "nav-btn nav-btn-login" %>
+      <% end %>
+    </div>
+  </div>
 </nav>
 
 <% if flash[:notice] %>

@@ -1,5 +1,5 @@
 module Spotify
-  class FindArtist < ApplicationService
+  class FindArtist < SpotifyService
     def initialize(name:)
       @name = name
     end

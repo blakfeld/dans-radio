@@ -1,0 +1,15 @@
+<div class="field-unit__label">
+  <%= f.label field.attribute %>
+</div>
+<div class="field-unit__field">
+  <%= f.password_field field.attribute, class: "form-control" %>
+  <% if field.attribute == :password %>
+    <p class="field-unit__hint">
+      <% if f.object.persisted? %>
+        Leave blank to keep current password
+      <% else %>
+        Minimum 6 characters
+      <% end %>
+    </p>
+  <% end %>
+</div>

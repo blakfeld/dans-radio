@@ -1,5 +1,5 @@
 module Spotify
-  class QueueSong < ApplicationService
+  class QueueSong < SpotifyService
     def initialize(track)
       @track = track
     end

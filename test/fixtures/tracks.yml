@@ -1,11 +1,29 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  spotify_id: MyString
-  album_id: 1
-  title: MyString
+  spotify_id: track_111
+  album: one
+  title: Test Song One
+  duration_ms: 180000
+  explicit: false
+  href: https://api.spotify.com/v1/tracks/track_111
+  is_playable: true
+  preview_url: https://preview.spotify.com/track_111
+  track_number: 1
+  uri: spotify:track:track_111
+  is_top_track: false
+  popularity: 70
 
 two:
-  spotify_id: MyString
-  album_id: 1
-  title: MyString
+  spotify_id: track_222
+  album: one
+  title: Test Song Two
+  duration_ms: 210000
+  explicit: false
+  href: https://api.spotify.com/v1/tracks/track_222
+  is_playable: true
+  preview_url: https://preview.spotify.com/track_222
+  track_number: 2
+  uri: spotify:track:track_222
+  is_top_track: false
+  popularity: 65

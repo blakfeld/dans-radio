@@ -1,0 +1,52 @@
+#!/usr/bin/env ruby
+
+# Test runner with coverage reporting
+# Usage: bin/test_with_coverage [test_file_or_directory]
+
+require "fileutils"
+
+# Set environment variable to enable coverage
+ENV["COVERAGE"] = "true"
+ENV["RAILS_ENV"] = "test"
+
+puts "=" * 80
+puts "Running Rails Tests with Coverage Reporting"
+puts "=" * 80
+puts
+
+# Parse arguments
+args = ARGV.dup
+test_target = args.shift || "test"
+
+# Ensure test database is prepared
+puts "Preparing test database..."
+system("rails db:test:prepare")
+puts
+
+# Run the tests
+puts "Running tests..."
+puts "-" * 40
+
+if test_target == "test"
+  # Run all tests
+  test_command = "rails test"
+else
+  # Run specific test file or directory
+  test_command = "rails test #{test_target}"
+end
+
+# Execute tests
+success = system(test_command)
+
+# Display coverage report location if tests ran with coverage
+if ENV["COVERAGE"]
+  puts
+  puts "-" * 40
+  puts "Coverage report generated at: coverage/index.html"
+  puts "Open with: open coverage/index.html"
+  puts "-" * 40
+end
+
+# Exit with appropriate code
+exit(success ? 0 : 1)
+

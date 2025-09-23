@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_22_212937) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_23_005034) do
   create_table "albums", force: :cascade do |t|
     t.string "name"
     t.integer "artist_id"
@@ -24,6 +24,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_212937) do
     t.string "uri"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "available_markets"
+    t.string "label"
+    t.integer "popularity"
+    t.index ["popularity"], name: "index_albums_on_popularity"
   end
 
   create_table "artists", force: :cascade do |t|
@@ -37,6 +41,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_212937) do
     t.text "bio"
     t.text "genres"
     t.integer "popularity"
+    t.text "external_urls"
+    t.integer "followers"
+    t.index ["followers"], name: "index_artists_on_followers"
   end
 
   create_table "request_queues", force: :cascade do |t|
@@ -103,6 +110,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_212937) do
     t.integer "popularity"
     t.index ["album_id", "is_top_track"], name: "index_tracks_on_album_id_and_is_top_track"
     t.index ["popularity"], name: "index_tracks_on_popularity"
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "username", null: false
+    t.string "password_digest", null: false
+    t.string "first_name"
+    t.string "last_name"
+    t.boolean "admin", default: false, null: false
+    t.string "remember_token"
+    t.datetime "remember_token_expires_at"
+    t.datetime "last_login_at"
+    t.integer "failed_login_attempts", default: 0
+    t.datetime "locked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["remember_token"], name: "index_users_on_remember_token"
+    t.index ["username"], name: "index_users_on_username", unique: true
   end
 
   add_foreign_key "request_queues", "tracks", column: "current_track_id"

@@ -1,0 +1,199 @@
+name: RuboCop Linter
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  rubocop:
+    name: RuboCop Code Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for better analysis
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Cache RuboCop results
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/rubocop_cache
+          key: ${{ runner.os }}-rubocop-${{ hashFiles('.rubocop.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-rubocop-
+
+      - name: Install RuboCop
+        run: |
+          gem install rubocop -v "$(grep 'rubocop' Gemfile.lock | head -1 | tr -d ' ')"
+          gem install rubocop-rails-omakase
+
+      - name: Run RuboCop
+        id: rubocop
+        run: |
+          echo "🔍 Running RuboCop analysis..."
+
+          # Run RuboCop and capture the exit code
+          set +e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # For PRs, only check changed files
+            echo "Checking files changed in this PR..."
+            git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }}..HEAD | grep -E '\.(rb|rake)$|Gemfile$|Rakefile$' > changed_files.txt || true
+
+            if [ -s changed_files.txt ]; then
+              echo "Files to check:"
+              cat changed_files.txt
+              bin/rubocop -f github $(cat changed_files.txt | tr '\n' ' ')
+              RUBOCOP_EXIT=$?
+            else
+              echo "No Ruby files changed in this PR"
+              RUBOCOP_EXIT=0
+            fi
+          else
+            # For pushes to main/develop, check all files
+            echo "Checking all Ruby files..."
+            bin/rubocop -f github
+            RUBOCOP_EXIT=$?
+          fi
+          set -e
+
+          # Store exit code for later use
+          echo "rubocop_exit_code=$RUBOCOP_EXIT" >> $GITHUB_OUTPUT
+
+          # Exit with the RuboCop exit code
+          exit $RUBOCOP_EXIT
+
+      - name: Check for auto-correctable offenses
+        if: failure() && steps.rubocop.outputs.rubocop_exit_code != '0'
+        run: |
+          echo "🔧 Checking for auto-correctable offenses..."
+
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -s changed_files.txt ]; then
+            bin/rubocop -a --only-recognized-file-types $(cat changed_files.txt | tr '\n' ' ') --dry-run --format simple 2>/dev/null | grep -E "^\[Corrected\]" || true
+          else
+            bin/rubocop -a --only-recognized-file-types --dry-run --format simple 2>/dev/null | grep -E "^\[Corrected\]" || true
+          fi
+
+          if [ $? -eq 0 ]; then
+            echo "::warning::Some offenses can be auto-corrected. Run 'bin/rubocop -a' locally to fix them."
+          fi
+
+      - name: Upload RuboCop results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rubocop-results
+          path: |
+            changed_files.txt
+            .rubocop_todo.yml
+          retention-days: 7
+
+      - name: Comment PR with RuboCop summary
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const message = `## ❌ RuboCop Check Failed
+
+            Your code has style violations that need to be fixed before merging.
+
+            ### 📋 Next Steps:
+            1. Run \`bin/rubocop -a\` locally to auto-fix safe violations
+            2. Review and fix any remaining issues manually
+            3. Commit and push the fixes
+
+            ### 💡 Tip:
+            Consider setting up the pre-commit hook locally:
+            \`\`\`bash
+            # The hook should already be at .git/hooks/pre-commit
+            chmod +x .git/hooks/pre-commit
+            \`\`\`
+
+            Check the workflow logs above for specific violations.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
+  rubocop-autofix:
+    name: Auto-fix Suggestion
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: rubocop
+    continue-on-error: true
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Run RuboCop auto-correct
+        id: autocorrect
+        run: |
+          echo "🔧 Attempting auto-corrections..."
+
+          # Get changed files
+          git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }}..HEAD | grep -E '\.(rb|rake)$|Gemfile$|Rakefile$' > changed_files.txt || true
+
+          if [ -s changed_files.txt ]; then
+            # Run auto-correct
+            bin/rubocop -a $(cat changed_files.txt | tr '\n' ' ') || true
+
+            # Check if any files were modified
+            if ! git diff --quiet; then
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+              echo "Files were auto-corrected"
+            else
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+              echo "No auto-corrections needed"
+            fi
+          fi
+
+      - name: Create Pull Request with fixes
+        if: steps.autocorrect.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "style: Auto-fix RuboCop violations"
+          title: "[Auto] Fix RuboCop violations for PR #${{ github.event.pull_request.number }}"
+          body: |
+            This PR contains automatic fixes for RuboCop violations found in PR #${{ github.event.pull_request.number }}.
+
+            ## Changes Made
+            - Applied safe auto-corrections using `rubocop -a`
+            - Only modified files that were changed in the original PR
+
+            ## Review Required
+            Please review these changes to ensure they maintain the intended functionality.
+
+            ## Note
+            Some violations may require manual intervention and are not included in this auto-fix.
+          branch: rubocop-fix-pr-${{ github.event.pull_request.number }}
+          base: ${{ github.event.pull_request.head.ref }}
+          delete-branch: true

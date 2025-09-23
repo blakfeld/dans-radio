@@ -1,17 +1,17 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  username: MyString
-  email: MyString
-  token: MyString
-  refresh_token: MyString
-  expires_at: 2025-09-22 12:32:56
-  spotify_hash: MyText
+  username: test_user
+  email: test@example.com
+  token: test_token_123
+  refresh_token: test_refresh_token_123
+  expires_at: <%= 1.hour.from_now %>
+  spotify_hash: '{}'
 
 two:
-  username: MyString
-  email: MyString
-  token: MyString
-  refresh_token: MyString
-  expires_at: 2025-09-22 12:32:56
-  spotify_hash: MyText
+  username: another_user
+  email: another@example.com
+  token: test_token_456
+  refresh_token: test_refresh_token_456
+  expires_at: <%= 2.hours.from_now %>
+  spotify_hash: '{}'

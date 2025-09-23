@@ -1,0 +1,101 @@
+<table aria-labelledby="<%= table_title %>">
+  <thead>
+    <tr>
+      <% collection_presenter.attribute_types.each do |attr_name, attr_type| %>
+        <th class="cell-label
+        cell-label--<%= attr_type.html_class %>
+        cell-label--<%= collection_presenter.ordered_html_class(attr_name) %>"
+        scope="col"
+        aria-sort="<%= sort_order(collection_presenter.ordered_html_class(attr_name)) %>">
+        <%= link_to(sanitized_order_params(page, collection_field_name).merge(
+          collection_presenter.order_params_for(attr_name, key: collection_field_name)
+        )) do %>
+            <%= t(
+              "helpers.label.#{collection_presenter.resource_name}.#{attr_name}",
+              default: resource_class.human_attribute_name(attr_name).titleize,
+            ) %>
+            <% if collection_presenter.ordered_by?(attr_name) %>
+              <span class="cell-label__sort-indicator cell-label__sort-indicator--<%= collection_presenter.ordered_html_class(attr_name) %>">
+                <svg aria-hidden="true">
+                  <use xlink:href="#icon-up-caret" />
+                </svg>
+              </span>
+            <% end %>
+          <% end %>
+        </th>
+      <% end %>
+      <th colspan="2" scope="col">Actions</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% collection_presenter.resources.each do |resource| %>
+      <tr class="js-table-row"
+          <% if accessible_action?(resource, :show) %>
+            <%= %(role=link data-url=#{polymorphic_path([namespace, resource])}) %>
+          <% end %>
+          >
+        <% collection_presenter.attributes_for(resource).each do |attribute| %>
+          <td class="cell-data cell-data--<%= attribute.html_class %>">
+            <% if accessible_action?(resource, :show) %>
+              <a href="<%= polymorphic_path([namespace, resource]) -%>"
+                 tabindex="-1"
+                 class="action-show"
+                 >
+                <%= render_field attribute %>
+              </a>
+            <% else %>
+              <%= render_field attribute %>
+            <% end %>
+            <% if defined?(current_user) && resource == current_user %>
+              <span class="badge" style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px;">YOU</span>
+            <% end %>
+          </td>
+        <% end %>
+
+        <td class="cell-data cell-data--actions">
+          <% if resource.locked? && (!defined?(current_user) || resource != current_user) %>
+            <%= link_to "Unlock",
+                        unlock_admin_user_path(resource),
+                        data: { method: :patch },
+                        class: "action-unlock",
+                        style: "color: #28a745;" %>
+          <% end %>
+
+          <% if !defined?(current_user) || resource != current_user %>
+            <% if !resource.admin? || User.admins.count > 1 %>
+              <%= link_to resource.admin? ? "Remove Admin" : "Make Admin",
+                          toggle_admin_admin_user_path(resource),
+                          data: { method: :patch },
+                          class: "action-toggle-admin",
+                          style: resource.admin? ? "color: #dc3545;" : "color: #007bff;" %>
+            <% end %>
+          <% end %>
+        </td>
+
+        <td class="cell-data cell-data--actions">
+          <% if accessible_action?(resource, :edit) %>
+            <%= link_to(
+              edit_polymorphic_path([namespace, resource]),
+              class: "action-edit",
+            ) do %>
+              Edit
+            <% end %>
+          <% end %>
+
+          <% if accessible_action?(resource, :destroy) && (!defined?(current_user) || resource != current_user) %>
+            <% if !resource.admin? || User.admins.count > 1 %>
+              <%= link_to(
+                [namespace, resource],
+                class: "action-destroy",
+                data: { method: :delete, confirm: "Are you sure?" }
+              ) do %>
+                Destroy
+              <% end %>
+            <% end %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

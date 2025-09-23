@@ -1,5 +1,6 @@
 module Admin
-  class SongRequestsController < BaseController
+  class SongRequestsController < ::ApplicationController
+    before_action :require_admin
     before_action :set_song_request, only: [ :show, :edit, :update, :destroy, :approve, :reject ]
 
     def index

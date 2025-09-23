@@ -3,10 +3,11 @@ class NowPlayingController < ApplicationController
 
   def index
     @currently_playing = get_currently_playing_track
-    @queue_count = SongRequest.active.count
+    # Only count pending and queued requests (exclude currently playing)
+    @queue_count = SongRequest.where(status: [ "pending", "queued" ]).count
 
-    # Calculate estimated queue time
-    @queue_duration_ms = SongRequest.active.joins(:track).sum("tracks.duration_ms")
+    # Calculate estimated queue time (excluding currently playing)
+    @queue_duration_ms = SongRequest.where(status: [ "pending", "queued" ]).joins(:track).sum("tracks.duration_ms")
     @queue_duration_mins = (@queue_duration_ms / 60000.0).round if @queue_duration_ms > 0
 
     # Artist browse functionality
@@ -60,7 +61,8 @@ class NowPlayingController < ApplicationController
       format.html
       format.json { render json: {
         currently_playing: track_json(@currently_playing),
-        queue_count: @queue_count
+        queue_count: @queue_count,
+        queue_duration_mins: @queue_duration_mins
       }}
     end
   end

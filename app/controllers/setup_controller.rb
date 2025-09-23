@@ -1,6 +1,5 @@
 class SetupController < ApplicationController
-  # TODO: Add authentication here later
-  # before_action :authenticate_admin!
+  before_action :require_admin
 
   def index
     @spotify_users = SpotifyUser.all

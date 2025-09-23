@@ -1,5 +1,6 @@
 module Admin
-  class AlbumsController < BaseController
+  class AlbumsController < ::ApplicationController
+    before_action :require_admin
     before_action :set_album, only: [ :show, :edit, :update, :destroy ]
 
     def index

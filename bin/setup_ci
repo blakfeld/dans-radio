@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+# Setup script for CI/testing environment
+# Usage: bin/setup_ci
+
+require 'fileutils'
+
+puts "=" * 80
+puts "Setting up CI/Testing Environment"
+puts "=" * 80
+puts
+
+# Check Ruby version
+ruby_version = File.read('.ruby-version').strip rescue '3.3.0'
+current_ruby = RUBY_VERSION
+
+if current_ruby < ruby_version
+  puts "⚠️  Warning: Ruby version mismatch"
+  puts "   Required: #{ruby_version}"
+  puts "   Current: #{current_ruby}"
+  puts "   Consider using rbenv or rvm to install Ruby #{ruby_version}"
+  puts
+end
+
+# Install dependencies
+puts "📦 Installing dependencies..."
+system("bundle install")
+system("npm install") if File.exist?('package.json')
+puts
+
+# Setup test database
+puts "🗄️  Setting up test database..."
+system("RAILS_ENV=test rails db:create")
+system("RAILS_ENV=test rails db:schema:load")
+puts
+
+# Install git hooks
+if File.exist?('.githooks/pre-push')
+  puts "🔗 Installing git hooks..."
+  FileUtils.cp('.githooks/pre-push', '.git/hooks/pre-push')
+  FileUtils.chmod(0755, '.git/hooks/pre-push')
+  puts "   Pre-push hook installed"
+else
+  puts "⚠️  No git hooks found in .githooks/"
+end
+puts
+
+# Create coverage directory
+FileUtils.mkdir_p('coverage')
+puts "📊 Coverage directory created"
+puts
+
+# Run initial test to verify setup
+puts "🧪 Running quick test to verify setup..."
+success = system("rails test test/models/track_test.rb", out: File::NULL, err: File::NULL)
+
+if success
+  puts "✅ Test environment is set up correctly!"
+else
+  puts "❌ Test failed. Please check your setup."
+  exit 1
+end
+
+puts
+puts "=" * 80
+puts "Setup Complete!"
+puts "=" * 80
+puts
+puts "Available commands:"
+puts "  bin/ci quick     - Run quick tests"
+puts "  bin/ci full      - Run full test suite"
+puts "  bin/ci coverage  - Run tests with coverage"
+puts "  rake test:summary - Show coverage summary"
+puts
+puts "GitHub Actions will run automatically on push/PR"
+puts
+puts "To run tests before pushing, the pre-push hook has been installed."
+puts "Use 'git push --no-verify' to skip pre-push tests if needed."
+puts
+

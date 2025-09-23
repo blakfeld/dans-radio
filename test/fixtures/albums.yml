@@ -1,7 +1,25 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  name: MyString
+  spotify_id: album_abc
+  name: Test Album One
+  artist: one
+  album_type: album
+  total_tracks: 10
+  external_urls: '{"spotify": "https://open.spotify.com/album/abc"}'
+  href: https://api.spotify.com/v1/albums/album_abc
+  images: '[]'
+  release_date: "2023-01-01"
+  uri: spotify:album:album_abc
 
 two:
-  name: MyString
+  spotify_id: album_def
+  name: Test Album Two
+  artist: two
+  album_type: single
+  total_tracks: 3
+  external_urls: '{"spotify": "https://open.spotify.com/album/def"}'
+  href: https://api.spotify.com/v1/albums/album_def
+  images: '[]'
+  release_date: "2023-06-15"
+  uri: spotify:album:album_def

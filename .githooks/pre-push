@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Git pre-push hook to run tests before pushing
+# To enable: cp .githooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+
+echo "Running pre-push checks..."
+
+# Run quick CI checks
+bin/ci quick
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Pre-push checks failed!"
+  echo "Fix the issues above or use 'git push --no-verify' to skip checks."
+  exit 1
+fi
+
+echo ""
+echo "✅ All pre-push checks passed!"
+exit 0
+

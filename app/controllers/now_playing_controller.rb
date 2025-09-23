@@ -4,9 +4,9 @@ class NowPlayingController < ApplicationController
   def index
     @currently_playing = get_currently_playing_track
     @queue_count = SongRequest.active.count
-    
+
     # Calculate estimated queue time
-    @queue_duration_ms = SongRequest.active.joins(:track).sum('tracks.duration_ms')
+    @queue_duration_ms = SongRequest.active.joins(:track).sum("tracks.duration_ms")
     @queue_duration_mins = (@queue_duration_ms / 60000.0).round if @queue_duration_ms > 0
 
     # Artist browse functionality

@@ -21,7 +21,7 @@ class UserDashboard < Administrate::BaseDashboard
     failed_login_attempts: Field::Number,
     locked_at: Field::DateTime,
     created_at: Field::DateTime,
-    updated_at: Field::DateTime,
+    updated_at: Field::DateTime
   }.freeze
 
   # COLLECTION_ATTRIBUTES

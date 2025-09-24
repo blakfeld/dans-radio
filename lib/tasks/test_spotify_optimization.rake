@@ -1,10 +1,10 @@
 namespace :spotify do
   desc "Test and compare Spotify API optimization"
   task test_optimization: :environment do
-    require 'benchmark'
+    require "benchmark"
 
     # Test artist (you can change this to any artist)
-    test_artist_name = ENV['ARTIST_NAME'] || "Radiohead"
+    test_artist_name = ENV["ARTIST_NAME"] || "Radiohead"
 
     puts "\n" + "="*60
     puts "SPOTIFY API OPTIMIZATION TEST"

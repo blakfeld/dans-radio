@@ -74,4 +74,3 @@ test_files.each do |file|
 end
 
 puts "Fixed #{fixed_count} files"
-

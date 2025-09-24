@@ -157,4 +157,3 @@ class ManageCurrentlyPlayingTest < ActiveSupport::TestCase
     assert_equal "Radio playlist not found: Dans Radio", result[:error]
   end
 end
-

@@ -251,4 +251,3 @@ class ProcessRequestQueueJobTest < ActiveJob::TestCase
     end
   end
 end
-

@@ -120,4 +120,3 @@ class RefreshSpotifyTokensJobTest < ActiveJob::TestCase
     end
   end
 end
-

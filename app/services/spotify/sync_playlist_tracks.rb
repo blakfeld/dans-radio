@@ -35,13 +35,17 @@ module Spotify
 
       all_playlist_tracks = fetch_all_tracks(playlist)
 
+      Rails.logger.info "[Spotify Sync] Starting Phase 1: Quick sync of #{all_playlist_tracks.length} playlist tracks (no API calls)"
+
       # First, sync the playlist tracks and collect unique artists
-      yield("Syncing playlist tracks...", 0, 100) if block_given?
+      yield("Phase 1: Quick sync of playlist tracks (no API calls)...", 0, 100) if block_given?
       unique_artists = sync_playlist_tracks_and_collect_artists(all_playlist_tracks, &block)
+
+      Rails.logger.info "[Spotify Sync] Phase 1 complete. Found #{unique_artists.size} unique artists"
 
       # If full artist catalog sync is enabled, fetch and sync all albums/tracks for each artist
       if @sync_full_artist_catalog && unique_artists.any?
-        yield("Syncing full artist catalogs...", 50, 100) if block_given?
+        yield("Phase 2: Syncing full artist catalogs (this requires API calls)...", 50, 100) if block_given?
         sync_full_artist_catalogs(unique_artists, &block)
       end
 
@@ -53,12 +57,14 @@ module Spotify
         synced_albums_count: @synced_albums_count,
         synced_artists_count: @synced_artists_count,
         unique_artists_count: unique_artists.size,
+        top_tracks_count: Track.where(is_top_track: true).count,
         error_count: @error_count,
         errors: @errors,
         stats: {
           artists: Artist.count,
           albums: Album.count,
-          tracks: Track.count
+          tracks: Track.count,
+          top_tracks: Track.where(is_top_track: true).count
         }
       }
     rescue => e
@@ -96,8 +102,9 @@ module Spotify
     def sync_playlist_tracks_and_collect_artists(tracks, &block)
       unique_artists = Set.new
 
+      # First pass: Quick sync without API calls, just save basic data from playlist response
       tracks.each_with_index do |track, index|
-        artist_record = sync_single_track(track, index, tracks.length, &block)
+        artist_record = sync_single_track_lightweight(track, index, tracks.length, &block)
         unique_artists.add(artist_record) if artist_record
       end
 
@@ -107,14 +114,16 @@ module Spotify
     def sync_full_artist_catalogs(artists, &block)
       total = artists.size
 
+      Rails.logger.info "[Spotify Sync] Starting Phase 2: Full catalog sync for #{total} artists (with API calls)"
+
       # Pre-fetch all artist objects in parallel to minimize API calls
-      yield("Pre-fetching artist data...", 50, 100) if block_given?
+      yield("Phase 2: Pre-fetching artist data...", 50, 100) if block_given?
       prefetch_artist_objects(artists)
 
       artists.each_with_index do |artist_record, index|
         next if @processed_artist_ids.include?(artist_record.spotify_id)
 
-        yield("Fetching albums for #{artist_record.name}...", 50 + (index * 50 / total), 100) if block_given?
+        yield("Phase 2: [#{index + 1}/#{total}] Fetching albums for #{artist_record.name}...", 50 + (index * 50 / total), 100) if block_given?
 
         begin
           # Use cached artist object if available
@@ -125,6 +134,9 @@ module Spotify
 
           # Fetch all albums for this artist (including singles, compilations, etc.)
           fetch_and_sync_artist_albums(rspotify_artist, artist_record, &block)
+
+          # Sync top tracks for the artist (top 5 tracks)
+          sync_top_tracks(rspotify_artist, artist_record, &block)
 
           @processed_artist_ids.add(artist_record.spotify_id)
           @synced_artists_count += 1
@@ -293,6 +305,30 @@ module Spotify
       end
     end
 
+    def sync_single_track_lightweight(track, index, total, &block)
+      return increment_error("Track is nil") if track.nil?
+
+      # Call the progress block before processing
+      yield(track, index, total) if block_given?
+
+      artist_record = nil
+
+      # NO rate limiting here - we're just saving data we already have
+      # This should be FAST with no API calls
+      ActiveRecord::Base.transaction do
+        artist_record = sync_artist_lightweight(track)
+        album_record = sync_album_lightweight(track, artist_record)
+        sync_track_record_lightweight(track, album_record)
+        @synced_tracks_count += 1 unless @sync_full_artist_catalog # Don't double-count if we're doing full sync
+      end
+
+      artist_record
+    rescue => e
+      increment_error("Error syncing '#{track&.name}': #{e.message}")
+      nil
+    end
+
+    # Original method kept for backwards compatibility if needed
     def sync_single_track(track, index, total, &block)
       return increment_error("Track is nil") if track.nil?
 
@@ -315,6 +351,28 @@ module Spotify
     rescue => e
       increment_error("Error syncing '#{track&.name}': #{e.message}")
       nil
+    end
+
+    def sync_artist_lightweight(track)
+      return nil unless track.artists.any?
+
+      primary_artist = track.artists.first
+      artist_record = Artist.find_or_initialize_by(spotify_id: primary_artist.id)
+
+      # ONLY use data that's guaranteed to be in the playlist response
+      # DO NOT access properties that might trigger API calls
+      artist_attributes = {
+        name: primary_artist.name,
+        uri: primary_artist.uri,
+        href: primary_artist.href
+      }
+
+      # Don't try to fetch images - keep existing if we have them
+      artist_attributes[:images] = artist_record.images if artist_record.images.present?
+
+      artist_record.assign_attributes(artist_attributes)
+      artist_record.save! if artist_record.changed?
+      artist_record
     end
 
     def sync_artist(track)
@@ -343,6 +401,32 @@ module Spotify
       artist_record.assign_attributes(artist_attributes)
       artist_record.save! if artist_record.changed?
       artist_record
+    end
+
+    def sync_album_lightweight(track, artist_record)
+      return nil unless track.album
+
+      album_record = Album.find_or_initialize_by(spotify_id: track.album.id)
+
+      # ONLY use data that's guaranteed to be in the playlist response
+      # DO NOT access properties that might trigger API calls
+      album_attributes = {
+        name: track.album.name,
+        artist_id: artist_record&.id,
+        album_type: track.album.album_type,
+        total_tracks: track.album.total_tracks,
+        external_urls: track.album.external_urls,
+        href: track.album.href,
+        release_date: track.album.release_date,
+        uri: track.album.uri
+      }
+
+      # Don't try to fetch images - keep existing if we have them
+      album_attributes[:images] = album_record.images if album_record.images.present?
+
+      album_record.assign_attributes(album_attributes)
+      album_record.save! if album_record.changed?
+      album_record
     end
 
     def sync_album(track, artist_record)
@@ -403,6 +487,27 @@ module Spotify
       album_record
     end
 
+    def sync_track_record_lightweight(track, album_record)
+      track_record = Track.find_or_initialize_by(spotify_id: track.id)
+
+      # ONLY use data that's guaranteed to be in the playlist response
+      track_record.assign_attributes(
+        title: track.name,
+        album_id: album_record&.id,
+        duration_ms: track.duration_ms,
+        explicit: track.explicit,
+        href: track.href,
+        is_playable: track.is_playable,
+        preview_url: track.preview_url,
+        track_number: track.track_number,
+        uri: track.uri
+        # Don't try to access popularity here - it might not be in playlist response
+      )
+
+      track_record.save! if track_record.changed?
+      track_record
+    end
+
     def sync_track_record(track, album_record)
       track_record = Track.find_or_initialize_by(spotify_id: track.id)
 
@@ -415,7 +520,8 @@ module Spotify
         is_playable: track.is_playable,
         preview_url: track.preview_url,
         track_number: track.track_number,
-        uri: track.uri
+        uri: track.uri,
+        popularity: track.try(:popularity)
       )
 
       track_record.save! if track_record.changed?
@@ -434,7 +540,8 @@ module Spotify
         is_playable: rspotify_track.try(:is_playable),
         preview_url: rspotify_track.preview_url,
         track_number: rspotify_track.track_number,
-        uri: rspotify_track.uri
+        uri: rspotify_track.uri,
+        popularity: rspotify_track.try(:popularity)
       )
 
       # Add to batch save list instead of saving immediately if in batch mode
@@ -500,7 +607,8 @@ module Spotify
         is_playable: rspotify_track.try(:is_playable),
         preview_url: rspotify_track.preview_url,
         track_number: rspotify_track.track_number,
-        uri: rspotify_track.uri
+        uri: rspotify_track.uri,
+        popularity: rspotify_track.try(:popularity)
       )
 
       track_record
@@ -594,6 +702,63 @@ module Spotify
 
         sleep(retry_after)
         @last_api_call = Time.current # Reset the timer after waiting
+      end
+
+      def sync_top_tracks(rspotify_artist, artist_record, &block)
+        # Fetch top tracks for the artist (only top 5)
+        begin
+          yield("Fetching top tracks for #{artist_record.name}...", nil, nil) if block_given?
+
+          top_tracks = with_rate_limit_retry do
+            rspotify_artist.top_tracks("US") # Using US as default country
+          end
+
+          return unless top_tracks && top_tracks.any?
+
+          # Clear previous top track markers for this artist
+          artist_record.tracks.update_all(is_top_track: false)
+
+          # Process only the top 5 tracks
+          top_tracks.first(5).each_with_index do |spotify_track, index|
+            # Find or create the track (it might already exist from album sync)
+            track = Track.find_by(spotify_id: spotify_track.id)
+
+            if track
+              # Just update the top track flag and popularity
+              track.update!(
+                is_top_track: true,
+                popularity: spotify_track.popularity || (100 - index * 10)
+              )
+            else
+              # Need to create the track and potentially its album
+              if spotify_track.album
+                album_record = sync_album_from_rspotify(spotify_track.album, artist_record)
+              end
+
+              track_record = Track.find_or_initialize_by(spotify_id: spotify_track.id)
+              track_record.assign_attributes(
+                title: spotify_track.name,
+                album_id: album_record&.id,
+                duration_ms: spotify_track.duration_ms,
+                explicit: spotify_track.explicit,
+                href: spotify_track.href,
+                is_playable: spotify_track.try(:is_playable),
+                preview_url: spotify_track.preview_url,
+                track_number: spotify_track.track_number,
+                uri: spotify_track.uri,
+                is_top_track: true,
+                popularity: spotify_track.popularity || (100 - index * 10)
+              )
+              track_record.save! if track_record.changed?
+              @synced_tracks_count += 1
+            end
+          end
+
+          Rails.logger.info "[Spotify Sync] Synced top 5 tracks for #{artist_record.name}"
+        rescue => e
+          Rails.logger.error "Error syncing top tracks for #{artist_record.name}: #{e.message}"
+          increment_error("Error syncing top tracks for '#{artist_record.name}': #{e.message}")
+        end
       end
 
       # Wrapper method to execute API calls with rate limiting and retry logic

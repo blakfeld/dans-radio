@@ -108,4 +108,3 @@ end
 
 desc "Run all tests with coverage (alias for test:coverage)"
 task coverage: "test:coverage"
-

@@ -260,4 +260,3 @@ class RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_nil assigns(:cooldown_remaining)
   end
 end
-

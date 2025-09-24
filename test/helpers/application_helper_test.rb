@@ -45,4 +45,3 @@ class ApplicationHelperTest < ActionView::TestCase
     assert_equal "0:01", format_time_ms(1999.9)
   end
 end
-

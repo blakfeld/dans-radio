@@ -231,4 +231,3 @@ class UpdatePlayheadTest < ActiveSupport::TestCase
     assert_equal "different_playlist", result[:context]
   end
 end
-

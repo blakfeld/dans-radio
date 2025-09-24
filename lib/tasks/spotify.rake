@@ -84,6 +84,7 @@ namespace :spotify do
         puts "  Unique artists: #{result[:unique_artists_count]}"
         puts "  Total tracks synced: #{result[:synced_tracks_count]}"
         puts "  Total albums synced: #{result[:synced_albums_count]}"
+        puts "  Top tracks synced: #{result[:top_tracks_count] || 0}"
         puts "\n🎯 Efficiency:"
         puts "  API calls per track: #{(api_calls.to_f / result[:synced_tracks_count]).round(3)}" if result[:synced_tracks_count] > 0
         puts "  DB ops per track: #{(db_operations.to_f / result[:synced_tracks_count]).round(3)}" if result[:synced_tracks_count] > 0
@@ -221,8 +222,13 @@ namespace :spotify do
     end
 
     puts "Searching for playlist: #{playlist_name}..."
-    puts "Sync full artist catalogs: #{sync_full_catalog}" if sync_full_catalog
-    puts "Rate limit: #{(1.0 / rate_limit_delay).round(2)} requests/second" if rate_limit_delay > 0
+    puts "Sync mode: #{sync_full_catalog ? 'Full artist catalog with top tracks' : 'Playlist tracks only'}"
+    puts "Rate limit: #{(1.0 / rate_limit_delay).round(2)} requests/second (applies to API calls only)" if rate_limit_delay > 0
+    puts "-" * 50
+    puts "\nSync will run in two phases:"
+    puts "  Phase 1: Quick sync of playlist tracks (no API calls, very fast)"
+    puts "  Phase 2: Fetch full artist catalogs + top 5 tracks (API calls with rate limiting)" if sync_full_catalog
+    puts "-" * 50
 
     # Create a custom progress tracking block
     current_track = 0
@@ -253,6 +259,7 @@ namespace :spotify do
       puts "   - Total tracks synced: #{result[:synced_tracks_count]}"
       puts "   - Total albums synced: #{result[:synced_albums_count]}"
       puts "   - Total artists synced: #{result[:synced_artists_count]}"
+      puts "   - Top tracks synced: #{result[:top_tracks_count]}"
       puts "   - Errors: #{result[:error_count]}"
 
       if result[:errors].any?
@@ -267,6 +274,7 @@ namespace :spotify do
       puts "   - Artists in database: #{result[:stats][:artists]}"
       puts "   - Albums in database: #{result[:stats][:albums]}"
       puts "   - Tracks in database: #{result[:stats][:tracks]}"
+      puts "   - Top tracks in database: #{result[:stats][:top_tracks]}"
     else
       puts "❌ #{result[:error]}"
       puts result[:backtrace] if result[:backtrace]

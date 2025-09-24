@@ -27,7 +27,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_005034) do
     t.text "available_markets"
     t.string "label"
     t.integer "popularity"
-    t.index ["popularity"], name: "index_albums_on_popularity"
+    t.index [ "popularity" ], name: "index_albums_on_popularity"
   end
 
   create_table "artists", force: :cascade do |t|
@@ -43,7 +43,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_005034) do
     t.integer "popularity"
     t.text "external_urls"
     t.integer "followers"
-    t.index ["followers"], name: "index_artists_on_followers"
+    t.index [ "followers" ], name: "index_artists_on_followers"
   end
 
   create_table "request_queues", force: :cascade do |t|
@@ -58,10 +58,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_005034) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "singleton_guard", default: 0, null: false
-    t.index ["current_track_id"], name: "index_request_queues_on_current_track_id"
-    t.index ["next_track_id"], name: "index_request_queues_on_next_track_id"
-    t.index ["playlist_id"], name: "index_request_queues_on_playlist_id"
-    t.index ["singleton_guard"], name: "index_request_queues_on_singleton_guard", unique: true
+    t.index [ "current_track_id" ], name: "index_request_queues_on_current_track_id"
+    t.index [ "next_track_id" ], name: "index_request_queues_on_next_track_id"
+    t.index [ "playlist_id" ], name: "index_request_queues_on_playlist_id"
+    t.index [ "singleton_guard" ], name: "index_request_queues_on_singleton_guard", unique: true
   end
 
   create_table "song_requests", force: :cascade do |t|
@@ -77,9 +77,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_005034) do
     t.datetime "queued_at"
     t.datetime "played_at"
     t.string "status", default: "pending"
-    t.index ["request_queue_id", "position"], name: "index_song_requests_on_request_queue_id_and_position"
-    t.index ["request_queue_id"], name: "index_song_requests_on_request_queue_id"
-    t.index ["status"], name: "index_song_requests_on_status"
+    t.index [ "request_queue_id", "position" ], name: "index_song_requests_on_request_queue_id_and_position"
+    t.index [ "request_queue_id" ], name: "index_song_requests_on_request_queue_id"
+    t.index [ "status" ], name: "index_song_requests_on_status"
   end
 
   create_table "spotify_users", force: :cascade do |t|
@@ -108,8 +108,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_005034) do
     t.datetime "updated_at", null: false
     t.boolean "is_top_track", default: false
     t.integer "popularity"
-    t.index ["album_id", "is_top_track"], name: "index_tracks_on_album_id_and_is_top_track"
-    t.index ["popularity"], name: "index_tracks_on_popularity"
+    t.index [ "album_id", "is_top_track" ], name: "index_tracks_on_album_id_and_is_top_track"
+    t.index [ "popularity" ], name: "index_tracks_on_popularity"
   end
 
   create_table "users", force: :cascade do |t|
@@ -126,9 +126,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_005034) do
     t.datetime "locked_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["email"], name: "index_users_on_email", unique: true
-    t.index ["remember_token"], name: "index_users_on_remember_token"
-    t.index ["username"], name: "index_users_on_username", unique: true
+    t.index [ "email" ], name: "index_users_on_email", unique: true
+    t.index [ "remember_token" ], name: "index_users_on_remember_token"
+    t.index [ "username" ], name: "index_users_on_username", unique: true
   end
 
   add_foreign_key "request_queues", "tracks", column: "current_track_id"

@@ -155,7 +155,7 @@ module Spotify
       full_albums = with_rate_limit do
         albums = RSpotify::Album.find(album_ids)
         # Ensure it's always an array
-        albums.is_a?(Array) ? albums : [albums]
+        albums.is_a?(Array) ? albums : [ albums ]
       end
 
       full_albums.each do |spotify_album|

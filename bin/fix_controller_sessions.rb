@@ -23,4 +23,3 @@ Dir.glob('test/controllers/**/*_test.rb').each do |file|
 end
 
 puts "Done!"
-

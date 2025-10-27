@@ -70,7 +70,7 @@ jobs:
           "
 
       - name: Upload detailed coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with:
           name: nightly-coverage-report
           path: coverage/
